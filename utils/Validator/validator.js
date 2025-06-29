@@ -30,10 +30,10 @@ class Validator {
         return value === null || value === undefined;
     }
 
-    static isNumber(value, set = "real") {
+    static isNumber(value, set = "R") {
         set = set.toLowerCase();
 
-        const SETS = ["real", "rational", "integer", "whole", "natural"];
+        const SETS = ["R", "Q", "Z", "W", "N"];
 
         if(!SETS.includes(set)) throw new Error("Only real numbers are supported. Please choose a valid set.");
 
@@ -48,10 +48,10 @@ class Validator {
         else if(REAL_NUMBERS_REGEX.test(value)) value = Number(value);
         else return false;
 
-        if(set === "real")    return true; // Includes all real numbers, allowing approximate representations of irrational numbers (Math.PI, Math.E ...)
-        if(set === "integer") return Number.isInteger(value);
-        if(set === "whole")   return Number.isInteger(value) && value >= 0;
-        if(set === "natural") return Number.isInteger(value) && value > 0;
+        if(set === "R" || set === "Q") return true; // Includes all real numbers, allowing approximate representations of irrational numbers (Math.PI, Math.E ...)
+        if(set === "Z") return Number.isInteger(value);
+        if(set === "W") return Number.isInteger(value) && value >= 0;
+        if(set === "N") return Number.isInteger(value) && value > 0;
     }
 
     static isAtMost(value, max) {
@@ -136,57 +136,214 @@ class Validator {
         const DATE_FORMAT_REGEX = /^((D{1,2}[^0-9a-zA-Z]?M{1,2}[^0-9a-zA-Z]?Y{1,})|(D{1,2}[^0-9a-zA-Z]?Y{1,}[^0-9a-zA-Z]?M{1,2})|(M{1,2}[^0-9a-zA-Z]?D{1,2}[^0-9a-zA-Z]?Y{1,})|(M{1,2}[^0-9a-zA-Z]?Y{1,}[^0-9a-zA-Z]?D{1,2})|(Y{1,}[^0-9a-zA-Z]?D{1,2}[^0-9a-zA-Z]?M{1,2})|(Y{1,}[^0-9a-zA-Z]?M{1,2}[^0-9a-zA-Z]?D{1,2}))$/;
         if(!DATE_FORMAT_REGEX.test(format)) throw new Error("Invalid format!");
 
-        let pattern = "", i = 0;
-        while (i < format.length) {
-            if (format[i] === "D") {
-                let count = 0;
-                while (format[i] === "D") { count++; i++; }
-                pattern += count === 1 ? "([1-9])" : "(0[1-9]|[1-2][0-9]|3[0-1])";
-                continue;
-            }
-
-            if (format[i] === "M") {
-                let count = 0;
-                while (format[i] === "M") { count++; i++; }
-                pattern += count === 1 ? "([1-9])" : "(0[1-9]|1[0-2])";
-                continue;
-            }
-
-            if (format[i] === "Y") {
-                let count = 0;
-                while (format[i] === "Y") { count++; i++; }
-                if (count === 2) pattern += "([0-9]{2})";
-                else if (count === 4) pattern += "([0-9]{4})";
-                else throw new Error("Year format must be either YY or YYYY!");
-                continue;
-            }
-
-            if (/[^0-9a-zA-Z]/.test(format[i])) pattern += "\\" + format[i];
-            else throw new Error("Invalid character in format!");
-
-            i++;
-        }
-
-        const DATE_REGEX = new RegExp('^' + pattern + '$', 'g');
-        if(!DATE_REGEX.test(value)) return false; // The date does not conform to the specified format
-
         const FORMAT_PATTERN = format.toLowerCase()
                 .replace(/y+|m+|d+/gi, 
                     match => {
-                        if (/y+/i.test(match)) return '(?<year>\\d{1,})';
-                        if (/m+/i.test(match)) return '(?<month>\\d{1,2})';
-                        if (/d+/i.test(match)) return '(?<day>\\d{1,2})';
+                        if (/y+/i.test(match)) return "(?<year>\\d{1,})";
+                        if (/m+/i.test(match)) return "(?<month>\\d{1,2})";
+                        if (/d+/i.test(match)) return "(?<day>\\d{1,2})";
                     }
         );
-        const DATE_VALIDATION_REGEX = new RegExp(`^${FORMAT_PATTERN}$`, 'i');
+        const DATE_VALIDATION_REGEX = new RegExp(`^${FORMAT_PATTERN}$`, "i");
 
         const match = value.match(DATE_VALIDATION_REGEX);
-        const dateObject = { year: parseInt(match.groups.year), month: parseInt(match.groups.month), day: parseInt(match.groups.day) };
+        const dateObject = { year: parseInt(match.groups.year, 10), month: parseInt(match.groups.month, 10), day: parseInt(match.groups.day, 10) };
         const monthsDays = [ 0, 31, ((dateObject.year % 4 === 0 && dateObject.year % 100 !== 0) || dateObject.year % 400 === 0) ? 28 : 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 ];
 
         if(dateObject.day > monthsDays[dateObject.month] || dateObject.month > 12 || dateObject.month < 1) return false;
 
         return true;
+    }
+
+    static isDateAtMost(value, max, format = "DD/MM/YYYY") {
+        if(value instanceof Date) value = value.getTime();
+        if(max instanceof Date)   max   = max.getTime();
+
+        if(value === NaN || max === NaN) throw new Error("Invalid dates!");
+
+        if(typeof value === "number" && typeof max === "number") return value <= max;
+
+        const DATE_FORMAT_REGEX = /^((D{1,2}[^0-9a-zA-Z]?M{1,2}[^0-9a-zA-Z]?Y{1,})|(D{1,2}[^0-9a-zA-Z]?Y{1,}[^0-9a-zA-Z]?M{1,2})|(M{1,2}[^0-9a-zA-Z]?D{1,2}[^0-9a-zA-Z]?Y{1,})|(M{1,2}[^0-9a-zA-Z]?Y{1,}[^0-9a-zA-Z]?D{1,2})|(Y{1,}[^0-9a-zA-Z]?D{1,2}[^0-9a-zA-Z]?M{1,2})|(Y{1,}[^0-9a-zA-Z]?M{1,2}[^0-9a-zA-Z]?D{1,2}))$/;
+        if(!DATE_FORMAT_REGEX.test(format)) throw new Error("Invalid format!");
+
+        const FORMAT_PATTERN = format.toLowerCase()
+                .replace(/y+|m+|d+/gi, 
+                    match => {
+                        if (/y+/i.test(match)) return "(?<year>\\d{1,})";
+                        if (/m+/i.test(match)) return "(?<month>\\d{1,2})";
+                        if (/d+/i.test(match)) return "(?<day>\\d{1,2})";
+                    }
+        );
+
+        const DATE_VALIDATION_REGEX = new RegExp(`^${FORMAT_PATTERN}$`, "i");
+
+        const valueMatch   = value.match(DATE_VALIDATION_REGEX);
+        const valueDateObj = {
+            year: parseInt(valueMatch.groups.year, 10),
+            month: parseInt(valueMatch.groups.month  , 10),
+            day: parseInt(valueMatch.groups.day, 10)
+        };
+        const monthsDays = [ 
+            0,
+            31, //Jan
+            ((valueDateObj.year % 4 === 0 && valueDateObj.year % 100 !== 0) || valueDateObj.year % 400 === 0) ? 28 : 29, //Feb
+            31, //Mar
+            30, //Apr
+            31, //May
+            30, //Jun
+            31, //Jul
+            31, //Aug
+            30, //Sep
+            31, //Oct
+            30, //Nov
+            31  //Dec
+        ];
+        if(valueDateObj.day > monthsDays[valueDateObj.month] || valueDateObj.month > 12 || valueDateObj.month < 1) throw new Error("Invalid dates!");
+  
+        const maxMatch   = max.match(DATE_VALIDATION_REGEX);
+        const maxDateObj = {
+            year: parseInt(maxMatch.groups.year, 10),
+            month: parseInt(maxMatch.groups.month, 10),
+            day: parseInt(maxMatch.groups.day, 10)
+        };
+        monthsDays[2] = ((maxDateObj.year % 4 === 0 && maxDateObj.year % 100 !== 0) || maxDateObj.year % 400 === 0) ? 28 : 29;
+        if(maxDateObj.day > monthsDays[maxDateObj.month] || maxDateObj.month > 12 || maxDateObj.month < 1) throw new Error("Invalid dates!");
+
+        value = new Date(valueDateObj.year, valueDateObj.month - 1, valueDateObj.day).getTime();
+        max   = new Date(maxDateObj.year, maxDateObj.month - 1, maxDateObj.day).getTime();
+
+        return value <= max;
+    }
+
+    static isDateAtLeast(value, min, format = "DD/MM/YYYY") {
+        if(value instanceof Date) value = value.getTime();
+        if(min instanceof Date)   min   = min.getTime();
+
+        if(value === NaN || min === NaN) throw new Error("Invalid dates!");
+
+        if(typeof value === "number" && typeof min === "number") return value >= min;
+
+        const DATE_FORMAT_REGEX = /^((D{1,2}[^0-9a-zA-Z]?M{1,2}[^0-9a-zA-Z]?Y{1,})|(D{1,2}[^0-9a-zA-Z]?Y{1,}[^0-9a-zA-Z]?M{1,2})|(M{1,2}[^0-9a-zA-Z]?D{1,2}[^0-9a-zA-Z]?Y{1,})|(M{1,2}[^0-9a-zA-Z]?Y{1,}[^0-9a-zA-Z]?D{1,2})|(Y{1,}[^0-9a-zA-Z]?D{1,2}[^0-9a-zA-Z]?M{1,2})|(Y{1,}[^0-9a-zA-Z]?M{1,2}[^0-9a-zA-Z]?D{1,2}))$/;
+        if(!DATE_FORMAT_REGEX.test(format)) throw new Error("Invalid format!");
+
+        const FORMAT_PATTERN = format.toLowerCase()
+                .replace(/y+|m+|d+/gi, 
+                    match => {
+                        if (/y+/i.test(match)) return "(?<year>\\d{1,})";
+                        if (/m+/i.test(match)) return "(?<month>\\d{1,2})";
+                        if (/d+/i.test(match)) return "(?<day>\\d{1,2})";
+                    }
+        );
+
+        const DATE_VALIDATION_REGEX = new RegExp(`^${FORMAT_PATTERN}$`, "i");
+
+        const valueMatch   = value.match(DATE_VALIDATION_REGEX);
+        const valueDateObj = {
+            year: parseInt(valueMatch.groups.year, 10),
+            month: parseInt(valueMatch.groups.month  , 10),
+            day: parseInt(valueMatch.groups.day, 10)
+        };
+        const monthsDays = [ 
+            0,
+            31, //Jan
+            ((valueDateObj.year % 4 === 0 && valueDateObj.year % 100 !== 0) || valueDateObj.year % 400 === 0) ? 28 : 29, //Feb
+            31, //Mar
+            30, //Apr
+            31, //May
+            30, //Jun
+            31, //Jul
+            31, //Aug
+            30, //Sep
+            31, //Oct
+            30, //Nov
+            31  //Dec
+        ];
+        if(valueDateObj.day > monthsDays[valueDateObj.month] || valueDateObj.month > 12 || valueDateObj.month < 1) throw new Error("Invalid dates!");
+  
+        const minMatch   = min.match(DATE_VALIDATION_REGEX);
+        const minDateObj = {
+            year: parseInt(minMatch.groups.year, 10),
+            month: parseInt(minMatch.groups.month, 10),
+            day: parseInt(minMatch.groups.day, 10)
+        };
+        monthsDays[2] = ((minDateObj.year % 4 === 0 && minDateObj.year % 100 !== 0) || minDateObj.year % 400 === 0) ? 28 : 29;
+        if(minDateObj.day > monthsDays[minDateObj.month] || minDateObj.month > 12 || minDateObj.month < 1) throw new Error("Invalid dates!");
+
+        value = new Date(valueDateObj.year, valueDateObj.month - 1, valueDateObj.day).getTime();
+        min   = new Date(minDateObj.year, minDateObj.month - 1, minDateObj.day).getTime();
+
+        return value >= min;
+    }
+
+    static isDateInRange(value, min, max, format = "DD/MM/YYYY") {
+        if(value instanceof Date) value = value.getTime();
+        if(min instanceof Date)   min   = min.getTime();
+        if(max instanceof Date)   max   = max.getTime();
+
+        if(value === NaN || min === NaN || max === NaN) throw new Error("Invalid dates!");
+
+        if(typeof value === "number" && typeof min === "number" && typeof max === "number") return value >= min && value <= max;
+
+        const DATE_FORMAT_REGEX = /^((D{1,2}[^0-9a-zA-Z]?M{1,2}[^0-9a-zA-Z]?Y{1,})|(D{1,2}[^0-9a-zA-Z]?Y{1,}[^0-9a-zA-Z]?M{1,2})|(M{1,2}[^0-9a-zA-Z]?D{1,2}[^0-9a-zA-Z]?Y{1,})|(M{1,2}[^0-9a-zA-Z]?Y{1,}[^0-9a-zA-Z]?D{1,2})|(Y{1,}[^0-9a-zA-Z]?D{1,2}[^0-9a-zA-Z]?M{1,2})|(Y{1,}[^0-9a-zA-Z]?M{1,2}[^0-9a-zA-Z]?D{1,2}))$/;
+        if(!DATE_FORMAT_REGEX.test(format)) throw new Error("Invalid format!");
+
+        const FORMAT_PATTERN = format.toLowerCase()
+                .replace(/y+|m+|d+/gi, 
+                    match => {
+                        if (/y+/i.test(match)) return "(?<year>\\d{1,})";
+                        if (/m+/i.test(match)) return "(?<month>\\d{1,2})";
+                        if (/d+/i.test(match)) return "(?<day>\\d{1,2})";
+                    }
+        );
+
+        const DATE_VALIDATION_REGEX = new RegExp(`^${FORMAT_PATTERN}$`, "i");
+
+        const valueMatch   = value.match(DATE_VALIDATION_REGEX);
+        const valueDateObj = {
+            year: parseInt(valueMatch.groups.year, 10),
+            month: parseInt(valueMatch.groups.month  , 10),
+            day: parseInt(valueMatch.groups.day, 10)
+        };
+        const monthsDays = [ 
+            0,
+            31, //Jan
+            ((valueDateObj.year % 4 === 0 && valueDateObj.year % 100 !== 0) || valueDateObj.year % 400 === 0) ? 28 : 29, //Feb
+            31, //Mar
+            30, //Apr
+            31, //May
+            30, //Jun
+            31, //Jul
+            31, //Aug
+            30, //Sep
+            31, //Oct
+            30, //Nov
+            31  //Dec
+        ];
+        if(valueDateObj.day > monthsDays[valueDateObj.month] || valueDateObj.month > 12 || valueDateObj.month < 1) throw new Error("Invalid dates!");
+  
+        const minMatch   = min.match(DATE_VALIDATION_REGEX);
+        const minDateObj = {
+            year: parseInt(minMatch.groups.year, 10),
+            month: parseInt(minMatch.groups.month, 10),
+            day: parseInt(minMatch.groups.day, 10)
+        };
+        monthsDays[2] = ((minDateObj.year % 4 === 0 && minDateObj.year % 100 !== 0) || minDateObj.year % 400 === 0) ? 28 : 29;
+        if(minDateObj.day > monthsDays[minDateObj.month] || minDateObj.month > 12 || minDateObj.month < 1) throw new Error("Invalid dates!");
+
+        const maxMatch   = max.match(DATE_VALIDATION_REGEX);
+        const maxDateObj = {
+            year: parseInt(maxMatch.groups.year, 10),
+            month: parseInt(maxMatch.groups.month, 10),
+            day: parseInt(maxMatch.groups.day, 10)
+        };
+        monthsDays[2] = ((maxDateObj.year % 4 === 0 && maxDateObj.year % 100 !== 0) || maxDateObj.year % 400 === 0) ? 28 : 29;
+        if(maxDateObj.day > monthsDays[maxDateObj.month] || maxDateObj.month > 12 || maxDateObj.month < 1) throw new Error("Invalid dates!");
+        
+        value = new Date(valueDateObj.year, valueDateObj.month - 1, valueDateObj.day).getTime();
+        min   = new Date(minDateObj.year, minDateObj.month - 1, minDateObj.day).getTime();
+        max   = new Date(maxDateObj.year, maxDateObj.month - 1, maxDateObj.day).getTime();
+
+        return value >= min && value <= max;
     }
 }
 
