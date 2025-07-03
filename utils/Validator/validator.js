@@ -149,77 +149,54 @@ const Validator = (() => {
             return pattern.test(value) && value.length >= minlength && value.length <= maxlength;
         }
 
-        static isDate(value, format) {
+        static isDate(value, format = "DD/MM/YYYY") {
             if(value instanceof Date) return value.getTime() !== NaN;
             if(!isValidDateFormat(format)) throw new Error("Invalid format!");
             const dateObject = extractDate(value, format);
             if(!dateObject) return false;
             monthsDays[2] = ((dateObject.year % 4 === 0 && dateObject.year % 100 !== 0) || dateObject.year % 400 === 0) ? 28 : 29;
-            if(dateObject.day > monthsDays[dateObject.month] || dateObject.day < 1 || dateObject.month > 12 || dateObject.year < 1)
-                return false;
+            if(dateObject.day > monthsDays[dateObject.month] ||
+                dateObject.day < 1 || dateObject.month > 12 || dateObject.month < 1 ||
+                dateObject.year === 0) return false;
             return true;
         }
 
-        static isDateAtLeast(value, min, format) {
+        static isDateAtLeast(value, min, format = "DD/MM/YYYY") {
             if(value instanceof Date) value = value.getTime();
             if(min instanceof Date) min = min.getTime();
-            if(value === NaN || min === NaN) throw new Error("Invalid dates!");
+            if(Number.isNaN(value) || Number.isNaN(min)) throw new Error("Invalid dates!");
             if(typeof value === "number" && typeof min === "number") return value >= min;
             if(!isValidDateFormat(format)) throw new Error("Invalid format!");
-            const dateObject = extractDate(value, format);
-            const minDateObj = extractDate(min, format);
-            if(!dateObject || !minDateObj) throw new Error("Invalid dates!");
-            monthsDays[2] = ((dateObject.year % 4 === 0 && dateObject.year % 100 !== 0) || dateObject.year % 400 === 0) ? 28 : 29;
-            if(dateObject.day > monthsDays[dateObject.month] || dateObject.day < 1 || dateObject.month > 12 || dateObject.year < 1)
-                throw new Error("Invalid dates!");
-            monthsDays[2] = ((minDateObj.year % 4 === 0 && minDateObj.year % 100 !== 0) || minDateObj.year % 400 === 0) ? 28 : 29;
-            if(minDateObj.day > monthsDays[minDateObj.month] || minDateObj.day < 1 || minDateObj.month > 12 || minDateObj.year < 1)
-                throw new Error("Invalid dates!");
+            if(!Validator.isDate(value, format) || !Validator.isDate(min, format)) throw new Error("Invalid dates!");
+            const dateObject = extractDate(value, format), minDateObj = extractDate(min, format);
             value = new Date(dateObject.year, dateObject.month - 1, dateObject.day).getTime();
             min   = new Date(minDateObj.year, minDateObj.month - 1, minDateObj.day).getTime();
             return value >= min;
         }
 
-        static isDateAtMost(value, max, format) {
+        static isDateAtMost(value, max, format = "DD/MM/YYYY") {
             if(value instanceof Date) value = value.getTime();
             if(max instanceof Date) max = max.getTime();
-            if(value === NaN || max === NaN) throw new Error("Invalid dates!");
+            if(Number.isNaN(value) || Number.isNaN(max)) throw new Error("Invalid dates!");
             if(typeof value === "number" && typeof max === "number") return value <= max;
             if(!isValidDateFormat(format)) throw new Error("Invalid format!");
-            const dateObject = extractDate(value, format);
-            const maxDateObj = extractDate(max, format);
-            if(!dateObject || !maxDateObj) throw new Error("Invalid dates!");
-            monthsDays[2] = ((dateObject.year % 4 === 0 && dateObject.year % 100 !== 0) || dateObject.year % 400 === 0) ? 28 : 29;
-            if(dateObject.day > monthsDays[dateObject.month] || dateObject.day < 1 || dateObject.month > 12 || dateObject.year < 1)
-                throw new Error("Invalid dates!");
-            monthsDays[2] = ((maxDateObj.year % 4 === 0 && maxDateObj.year % 100 !== 0) || maxDateObj.year % 400 === 0) ? 28 : 29;
-            if(maxDateObj.day > monthsDays[maxDateObj.month] || maxDateObj.day < 1 || maxDateObj.month > 12 || maxDateObj.year < 1)
-                throw new Error("Invalid dates!");
+            if(!Validator.isDate(value, format) || !Validator.isDate(max, format)) throw new Error("Invalid dates!");
+            const dateObject = extractDate(value, format), maxDateObj = extractDate(max, format);
             value = new Date(dateObject.year, dateObject.month - 1, dateObject.day).getTime();
             max   = new Date(maxDateObj.year, maxDateObj.month - 1, maxDateObj.day).getTime();
             return value <= max;
         }
 
-        static isDateInRange(value, min, max, format) {
+        static isDateInRange(value, min, max, format = "DD/MM/YYYY") {
             if(value instanceof Date) value = value.getTime();
             if(min instanceof Date) min = min.getTime();
             if(max instanceof Date) max = max.getTime();
-            if(value === NaN || min === NaN || max === NaN) throw new Error("Invalid dates!");
+            if(Number.isNaN(value) || Number.isNaN(min) || Number.isNaN(max)) throw new Error("Invalid dates!");
             if(typeof value === "number" && typeof min === "number" && typeof max === "number") return value >= min && value <= max;
             if(!isValidDateFormat(format)) throw new Error("Invalid format!");
-            const dateObject = extractDate(value, format);
-            const minDateObj = extractDate(min, format);
-            const maxDateObj = extractDate(max, format);
-            if(!dateObject || !minDateObj || !maxDateObj) throw new Error("Invalid dates!");
-            monthsDays[2] = ((dateObject.year % 4 === 0 && dateObject.year % 100 !== 0) || dateObject.year % 400 === 0) ? 28 : 29;
-            if(dateObject.day > monthsDays[dateObject.month] || dateObject.day < 1 || dateObject.month > 12 || dateObject.year < 1)
+            if(!Validator.isDate(value, format) || !Validator.isDate(min, format) || !Validator.isDate(max, format))
                 throw new Error("Invalid dates!");
-            monthsDays[2] = ((minDateObj.year % 4 === 0 && minDateObj.year % 100 !== 0) || minDateObj.year % 400 === 0) ? 28 : 29;
-            if(minDateObj.day > monthsDays[minDateObj.month] || minDateObj.day < 1 || minDateObj.month > 12 || minDateObj.year < 1)
-                throw new Error("Invalid dates!");
-            monthsDays[2] = ((maxDateObj.year % 4 === 0 && maxDateObj.year % 100 !== 0) || maxDateObj.year % 400 === 0) ? 28 : 29;
-            if(maxDateObj.day > monthsDays[maxDateObj.month] || maxDateObj.day < 1 || maxDateObj.month > 12 || maxDateObj.year < 1)
-                throw new Error("Invalid dates!");
+            const dateObject = extractDate(value, format), minDateObj = extractDate(min, format), maxDateObj = extractDate(max, format);
             value = new Date(dateObject.year, dateObject.month - 1, dateObject.day).getTime();
             min   = new Date(minDateObj.year, minDateObj.month - 1, minDateObj.day).getTime();
             max   = new Date(maxDateObj.year, maxDateObj.month - 1, maxDateObj.day).getTime();
