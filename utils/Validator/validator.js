@@ -60,6 +60,7 @@ const Validator = (() => {
             if(typeof value !== "string") value = value.toString();
             if(REAL_NUMBERS_REGEX.test(value)) {
                 if(set === "R" || set === "Q") return true; // Includes all real numbers, allowing approximate representations of irrational numbers (Math.PI, Math.E ...)
+                value = Number(value);
                 if(set === "Z") return Number.isInteger(value);
                 if(set === "W") return Number.isInteger(value) && value >= 0;
                 if(set === "N") return Number.isInteger(value) && value > 0;
@@ -205,4 +206,4 @@ const Validator = (() => {
     };
 });
 
-if(typeof module !== "undefined" && module.exports)  module.exports = Validator;
+if(typeof module !== "undefined" && module.exports)  module.exports = Validator();
