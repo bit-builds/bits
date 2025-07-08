@@ -150,6 +150,102 @@ const Validator = (() => {
             return pattern.test(value) && value.length >= minlength && value.length <= maxlength;
         }
 
+        static isTel(value, format) {
+            if (typeof format !== 'string') throw new Error('Format argument must be a string'); 
+            if (typeof value !== 'string') return false;
+
+            format = (format.length >= 0) ? format : 'SSSSSSSSSS'; // syntax ->  + C{1,3} N{1,5} S{1,10} alphanum E{1,5}    
+            let FORMAT_REGEX = /^((\+)?([^a-zA-Z0-9]*)(C{0,3}))?([^a-zA-Z0-9]*)(N{0,5})?([^a-zA-Z0-9]*)(S{1,10})([^a-zA-Z0-9]*)(([a-z]|[^a-zA-Z0-9])*(E{1,5}))?$/;
+            if (!FORMAT_REGEX.test(format)) throw new Error('Invalid format!');
+        
+            let pattern = '',
+                i = 0;
+            while (i < format.length) {
+                if (['C', 'N', 'S', 'E'].includes(format[i])) {
+                    const placeholder = format[i];
+                    while (i < format.length && format[i] === placeholder) {
+                        pattern += `[0-9]`;
+                        i++;
+                    }
+                } 
+                else if (/[^a-zA-Z0-9]/.test(format[i])) {
+                    const specialChar = format[i];
+                    while (i < format.length && format[i] === specialChar) {
+                        pattern += `\\${char}`;
+                        i++;
+                    }
+                } 
+                else {
+                    pattern += `\\${format[i]}`;
+                    i++;
+                }
+            }
+        
+            return new RegExp('^' + pattern + '$').test(value);
+        }
+
+        static isURL(value, options) {
+            let genDelims = `[:\\/\\?\\#\\[\\]\\@]`;
+            let subDelims = `[\\*\\+,;=]`;
+            let reserved = `(${genDelims}|${subDelims})`;
+            let unreserved = `([a-zA-Z0-9\\-\\.\\_\\~])`;
+            let pctEncoded = `%[0-9a-fA-F]{2}`;
+        
+            let pchar = `(${unreserved}|${pctEncoded}|${subDelims}|[:@])`;
+            let fragment = `(${pchar}|[\\/\\?])*`;
+            let query = `(${pchar}|[\\/\\?])*`;
+        
+            let segmentNZNC = `(${unreserved}|${pctEncoded}|${subDelims}|@)+`;
+            let segmentNZ = `${pchar}+`;
+            let segment = `${pchar}*`;
+        
+            let pathEmpty = ``;
+            let pathRootless = `${segmentNZ}(\\/${segment})*`;
+            let pathNoscheme = `${segmentNZNC}(\\/${segment})*`;
+            let pathAbsolute = `\\/((${segmentNZ}(\\/${segment})*)?)`;
+            let pathAbempty = `(\\/${segment})*`;
+            let path = `(${pathAbempty}|${pathAbsolute}|${pathNoscheme}|${pathRootless}|${pathEmpty})`;
+        
+            let regName = `(${unreserved}|${pctEncoded}|${subDelims})*`;
+            let decOctet = `([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])`;
+            let ipv4Adress = `${decOctet}\\.${decOctet}\\.${decOctet}\\.${decOctet}`;
+            let h16 = `[0-9a-fA-F]{1,4}`;
+            let ls32 = `((${h16}:${h16})|${ipv4Adress})`;
+        
+            let ipv6Address = `(
+                (${h16}:){6}${ls32} |
+                ::((${h16}:){5}${ls32})? |
+                (${h16})?::(${h16}:){4}${ls32} |
+                ((${h16}:){0,1}${h16})?::(${h16}:){3}${ls32} |
+                ((${h16}:){0,2}${h16})?::(${h16}:){2}${ls32} |
+                ((${h16}:){0,3}${h16})?::${h16}:${ls32} |
+                ((${h16}:){0,4}${h16})?::${ls32} |        
+                ((${h16}:){0,5}${h16})?::${h16} |
+                ((${h16}:){0,6}${h16})?::
+            )`.replace(/\s+/g, ''); // Remove unnecessary whitespace
+        
+            let ipvFuture = `v[0-9a-fA-F]+\\.(${unreserved}|${subDelims}|:)+`;
+            let ipLiteral = `\\[(${ipv6Address}|${ipvFuture})\\]`;
+            let port = `[0-9]*`;
+            let host = `(${ipLiteral}|${ipv4Adress}|${regName})`;
+            let userInfo = `(${unreserved}|${pctEncoded}|${subDelims}|:)*`;
+            let authority = `(${userInfo}@)?${host}(:${port})?`;
+            let scheme = `[a-zA-Z]([a-zA-Z0-9\\+\\-\\.]*)`;
+        
+            let relativePart = `(\\/\\/${authority}${pathAbempty}|${pathAbsolute}|${pathNoscheme}|${pathEmpty})`;
+            let hierPart = `(\\/\\/${authority}${pathAbempty}|${pathAbsolute}|${pathRootless}|${pathEmpty})`;
+            let relativeRef = `${relativePart}(\\?${query})?(#${fragment})?`;
+            let absoluteUri = `${scheme}:${hierPart}(\\?${query})?`;
+            let uri = `${scheme}:${hierPart}(\\?${query})?(#${fragment})?`;
+            let uriReference = `(${uri}|${relativeRef})`;
+        
+            let isPath         = new RegExp('^' + path         + '$', 'g').test(value);
+            let isRelativeRef  = new RegExp('^' + relativeRef  + '$', 'g').test(value);
+            let isAbsoluteUri  = new RegExp('^' + absoluteUri  + '$', 'g').test(value);
+            let isUriReference = new RegExp('^' + uriReference + '$', 'g').test(value);
+            return isUriReference;
+        }
+
         static isDate(value, format = "DD/MM/YYYY") {
             if(value instanceof Date) return value.getTime() !== NaN;
             if(!isValidDateFormat(format)) throw new Error("Invalid format!");
