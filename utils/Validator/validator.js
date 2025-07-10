@@ -1,6 +1,7 @@
 const Validator = (() => {
-    const BIG_INT_REGEX      = /^[+-]?\d+n$/;
-    const REAL_NUMBERS_REGEX = /^[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?$/; // Real numbers + optional sci notation
+    const BIG_INT_REGEX           = /^[+-]?\d+n$/;
+    const REAL_NUMBERS_REGEX      = /^[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?$/; // Real numbers + optional sci notation
+    const FRACTION_NOTATION_REGEX = /^([+-]?)(\d+)\/(0*[1-9]\d*)$/;
 
     const monthsDays = [ 
             0,
@@ -42,8 +43,8 @@ const Validator = (() => {
         };
     };
 
-    return class Validator {
-        static isEmpty(value) {
+    return {
+        isEmpty: (value) => {
             if(Array.isArray(value) || typeof value === "string")
                 return value.length === 0;
             if(value instanceof Map || value instanceof Set)
@@ -51,31 +52,43 @@ const Validator = (() => {
             if(typeof value === "object" && value !== null && value !== undefined)
                 return Object.keys(value).length === 0;
             return value === null || value === undefined;
-        }
+        },
 
-        static isNumber(value, set = "R") {
+        isNumber: (value, set = "R") => {
             set = set.toUpperCase();
-            if(!["R", "Q", "Z", "W", "N"].includes(set)) throw new Error("Only real numbers are supported. Please choose a valid set.");
+            if(!["R", "Q", "Z", "W", "N"].includes(set)) set = "R";
+            
             if(typeof value !== "string" && typeof value !== "number") return false;
-            if(typeof value !== "string") value = value.toString();
-            if(REAL_NUMBERS_REGEX.test(value)) {
+            
+            if(REAL_NUMBERS_REGEX.test(value.toString())) {
                 if(set === "R" || set === "Q") return true; // Includes all real numbers, allowing approximate representations of irrational numbers (Math.PI, Math.E ...)
                 value = Number(value);
                 if(set === "Z") return Number.isInteger(value);
                 if(set === "W") return Number.isInteger(value) && value >= 0;
                 if(set === "N") return Number.isInteger(value) && value > 0;
-            }
-            return false;
-        }
+            } 
+            else if(FRACTION_NOTATION_REGEX.test(value.toString())) {
+                if(set === "R" || set === "Q") return true;
 
-        static isBigInt(value) {
+                let [full, sign, numerator, denominator] = value.toString().match(FRACTION_NOTATION_REGEX);
+                numerator   = Number(numerator);
+                denominator = Number(denominator);
+                const ratio = numerator / denominator;
+                if(set === "Z") return Number.isInteger(ratio);
+                if(set === "W" || set === "N") return Number.isInteger(ratio) && sign !== "-";
+            }
+            
+            return false;
+        },
+
+        isBigInt: (value) => {
             if(typeof value === "bigint") return true;
             if(typeof value !== "string") return false;
             if(BIG_INT_REGEX.test(value)) return true;
             return false;
-        }
+        },
 
-        static isAtLeast(value, min) {
+        isAtLeast: (value, min) => {
             if(typeof value !== "string" && typeof value !== "number" && typeof value !== "bigint" &&
                 typeof min !== "string" && typeof min !== "number" && typeof min !== "bigint"
             ) throw new Error("Inputs must be valid numbers!");
@@ -91,9 +104,9 @@ const Validator = (() => {
                 min   = Number(min);
             } else throw new Error("Inputs must be valid numbers!");
             return value >= min;
-        }
+        },
 
-        static isAtMost(value, max) {
+        isAtMost: (value, max) => {
             if(typeof value !== "string" && typeof value !== "number" && typeof value !== "bigint" &&
                 typeof max !== "string" && typeof max !== "number" && typeof max !== "bigint"
             ) throw new Error("Inputs must be valid numbers!");
@@ -109,9 +122,9 @@ const Validator = (() => {
                 max   = Number(max);
             } else throw new Error("Inputs must be valid numbers!");
             return value <= max;
-        }
+        },
 
-        static isInRange(value, min, max) {
+        isInRange: (value, min, max) => {
             if(typeof value !== "string" && typeof value !== "number" && typeof value !== "bigint" &&
                 typeof min !== "string" && typeof min !== "number" && typeof min !== "bigint" &&
                 typeof max !== "string" && typeof max !== "number" && typeof max !== "bigint"
@@ -133,24 +146,34 @@ const Validator = (() => {
                 max   = Number(max);
             } else throw new Error("Inputs must be valid numbers!");
             return value >= min && value <= max;
-        }
+        },
 
-        static isEmail(value) {
+        isEmail: (value) => {
             if(typeof value !== "string") return false;
             return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(value);
-        }
+        },
 
-        static isPassword(value, minlength = 4, maxlength = 64, pattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9])\S+$/) {
+        isPassword: (value, minlength = 4, maxlength = 64, pattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9])\S+$/) => {
             minlength = Number(minlength);
             maxlength = Number(maxlength);
 
-            if(minlength === NaN || maxlength === NaN || !Number.isInteger(minlength) || !Number.isInteger(maxlength) || minlength > maxlength)
+            if(Number.isNaN(minlength) || Number.isNaN(maxlength) || !Number.isInteger(minlength) || !Number.isInteger(maxlength) || minlength > maxlength)
                 throw new Error("Length values must be valid integers, and the minimum value must not exceed the maximum!");
 
             return pattern.test(value) && value.length >= minlength && value.length <= maxlength;
-        }
+        },
 
-        static isTel(value, format) {
+        isAlphanum: (value) => {
+            if(typeof value !== "string") return false;
+            return /^[a-zA-Z0-9]+$/.test(value);
+        },
+
+        hasSpecialChar: (value) => {
+            if(typeof value !== "string") return false;
+            return /[^a-zA-Z0-9\s]/.test(value);
+        },
+
+        isTel: (value, format) => {
             if (typeof format !== 'string') throw new Error('Format argument must be a string'); 
             if (typeof value !== 'string') return false;
 
@@ -182,9 +205,9 @@ const Validator = (() => {
             }
         
             return new RegExp('^' + pattern + '$').test(value);
-        }
+        },
 
-        static isURL(value, options) {
+        isURL: (value, options) => {
             let genDelims = `[:\\/\\?\\#\\[\\]\\@]`;
             let subDelims = `[\\*\\+,;=]`;
             let reserved = `(${genDelims}|${subDelims})`;
@@ -244,10 +267,10 @@ const Validator = (() => {
             let isAbsoluteUri  = new RegExp('^' + absoluteUri  + '$', 'g').test(value);
             let isUriReference = new RegExp('^' + uriReference + '$', 'g').test(value);
             return isUriReference;
-        }
+        },
 
-        static isDate(value, format = "DD/MM/YYYY") {
-            if(value instanceof Date) return value.getTime() !== NaN;
+        isDate: (value, format = "DD/MM/YYYY") => {
+            if(value instanceof Date) return !Number.isNaN(value.getTime());
             if(!isValidDateFormat(format)) throw new Error("Invalid format!");
             const dateObject = extractDate(value, format);
             if(!dateObject) return false;
@@ -256,9 +279,9 @@ const Validator = (() => {
                 dateObject.day < 1 || dateObject.month > 12 || dateObject.month < 1 ||
                 dateObject.year === 0) return false;
             return true;
-        }
+        },
 
-        static isDateAtLeast(value, min, format = "DD/MM/YYYY") {
+        isDateAtLeast: (value, min, format = "DD/MM/YYYY") => {
             if(value instanceof Date) value = value.getTime();
             if(min instanceof Date) min = min.getTime();
             if(Number.isNaN(value) || Number.isNaN(min)) throw new Error("Invalid dates!");
@@ -269,9 +292,9 @@ const Validator = (() => {
             value = new Date(dateObject.year, dateObject.month - 1, dateObject.day).getTime();
             min   = new Date(minDateObj.year, minDateObj.month - 1, minDateObj.day).getTime();
             return value >= min;
-        }
+        },
 
-        static isDateAtMost(value, max, format = "DD/MM/YYYY") {
+        isDateAtMost: (value, max, format = "DD/MM/YYYY") => {
             if(value instanceof Date) value = value.getTime();
             if(max instanceof Date) max = max.getTime();
             if(Number.isNaN(value) || Number.isNaN(max)) throw new Error("Invalid dates!");
@@ -282,9 +305,9 @@ const Validator = (() => {
             value = new Date(dateObject.year, dateObject.month - 1, dateObject.day).getTime();
             max   = new Date(maxDateObj.year, maxDateObj.month - 1, maxDateObj.day).getTime();
             return value <= max;
-        }
+        },
 
-        static isDateInRange(value, min, max, format = "DD/MM/YYYY") {
+        isDateInRange: (value, min, max, format = "DD/MM/YYYY") => {
             if(value instanceof Date) value = value.getTime();
             if(min instanceof Date) min = min.getTime();
             if(max instanceof Date) max = max.getTime();
@@ -300,6 +323,6 @@ const Validator = (() => {
             return value >= min && value <= max;
         }
     };
-});
+})();
 
-if(typeof module !== "undefined" && module.exports)  module.exports = Validator();
+if(typeof module !== "undefined" && module.exports)  module.exports = Validator;
