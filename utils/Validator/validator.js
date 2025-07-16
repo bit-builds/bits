@@ -2,24 +2,50 @@ const Validator = (() => {
     const BIG_INT_REGEX           = /^[+-]?\d+n$/;
     const REAL_NUMBERS_REGEX      = /^[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?$/; // Real numbers + optional sci notation
     const FRACTION_NOTATION_REGEX = /^([+-]?)(\d+)\/(0*[1-9]\d*)$/;
+    const BINARY_REGEX            = /^[01]+$/;
+    const OCTAL_REGEX             = /^[0-7]+$/;
+    const HEXADECIMAL_REGEX       = /^[0-9ABCDF]+$/;
 
-    const monthsDays = [ 
-            0,
-            31, //Jan
-            28, //Feb
-            31, //Mar
-            30, //Apr
-            31, //May
-            30, //Jun
-            31, //Jul
-            31, //Aug
-            30, //Sep
-            31, //Oct
-            30, //Nov
-            31  //Dec
-        ];
+    const months_days = [ 
+        0,
+        31, //Jan
+        28, //Feb
+        31, //Mar
+        30, //Apr
+        31, //May
+        30, //Jun
+        31, //Jul
+        31, //Aug
+        30, //Sep
+        31, //Oct
+        30, //Nov
+        31  //Dec
+    ];
 
-    const isValidDateFormat = (format) => {
+    const supported_types = [
+        "text",
+        "password",
+        "email",
+        "number",
+        "tel",
+        "url",
+        "date"
+    ];
+
+    const min_max_types = [
+        "number",
+        "range"
+    ];
+
+    const length_types = [
+        "text",
+        "password",
+        "email",
+        "tel",
+        "url"
+    ];
+
+    const isValidDate_format = (format) => {
         const DATE_FORMAT_REGEX = /^((D{1,2}[^0-9a-zA-Z]?M{1,2}[^0-9a-zA-Z]?Y{1,})|(D{1,2}[^0-9a-zA-Z]?Y{1,}[^0-9a-zA-Z]?M{1,2})|(M{1,2}[^0-9a-zA-Z]?D{1,2}[^0-9a-zA-Z]?Y{1,})|(M{1,2}[^0-9a-zA-Z]?Y{1,}[^0-9a-zA-Z]?D{1,2})|(Y{1,}[^0-9a-zA-Z]?D{1,2}[^0-9a-zA-Z]?M{1,2})|(Y{1,}[^0-9a-zA-Z]?M{1,2}[^0-9a-zA-Z]?D{1,2}))$/;
         return DATE_FORMAT_REGEX.test(format);
     };
@@ -44,17 +70,26 @@ const Validator = (() => {
     };
 
     return {
+        REAL    : "R",
+        RATIONAL: "Q",
+        INTEGER : "Z",
+        WHOLE   : "W",
+        NATURAL : "N",
+
         isEmpty: (value) => {
             if(Array.isArray(value) || typeof value === "string")
                 return value.length === 0;
+
             if(value instanceof Map || value instanceof Set)
                 return value.size === 0;
+
             if(typeof value === "object" && value !== null && value !== undefined)
                 return Object.keys(value).length === 0;
+
             return value === null || value === undefined;
         },
 
-        isNumber: (value, set = "R") => {
+        isNumber: (value, set = Validator.REAL) => {
             set = set.toUpperCase();
             if(!["R", "Q", "Z", "W", "N"].includes(set)) set = "R";
             
@@ -88,21 +123,80 @@ const Validator = (() => {
             return false;
         },
 
+        isMultipleOf : (value, factor) => {
+            if(typeof value !== "string" && typeof value !== "number" && typeof value !== "bigint" &&
+                typeof factor !== "string" && typeof factor !== "number" && typeof factor !== "bigint"
+            ) throw new Error("Inputs must be valid numbers!");
+
+            if(typeof value !== "string")  value  = value.toString();
+            if(typeof factor !== "string") factor = factor.toString();
+
+            if(BIG_INT_REGEX.test(value) || BIG_INT_REGEX.test(factor)) {
+                if(!BIG_INT_REGEX.test(value) && !REAL_NUMBERS_REGEX.test(value) || !BIG_INT_REGEX.test(factor) && !REAL_NUMBERS_REGEX.test(factor)) 
+                    throw new Error("Inputs must be valid numbers!");
+
+                value  = BigInt(value.replace(/n$/, ""));
+                factor = BigInt(factor.replace(/n$/, ""));
+
+            }
+            else if(REAL_NUMBERS_REGEX.test(value) && REAL_NUMBERS_REGEX.test(factor)) {
+                value  = Number(value);
+                factor = Number(factor);
+            }
+            else throw new Error("Inputs must be valid numbers!");
+            
+            return (value % factor) === 0;
+        },
+
+        isBinary: (value) => {
+            if(typeof value !== "string" && typeof value !== "number") return false;
+
+            value = value.toString().toLowerCase();
+            if(value.startsWith("0b")) value = value.slice(2);
+
+            return BINARY_REGEX.test(value) && value.includes("1");
+        },
+
+        isOctal: (value) => {
+            if(typeof value !== "string" && typeof value !== "number") return false;
+
+            value = value.toString().toLowerCase();
+            if(value.startsWith("0o")) value = value.slice(2);
+
+            return OCTAL_REGEX.test(value) && parseInt(value, 8) > 0;
+        },
+
+        isHex: (value) => {
+            if(typeof value !== "string" && typeof value !== "number") return false;
+
+            value = value.toString().toUpperCase();
+            if(value.startsWith("0X")) value = value.slice(2);
+            else if(value.startsWith("#")) value = value.slice(1);
+
+            return HEXADECIMAL_REGEX.test(value) && parseInt(value, 16) > 0;
+        },
+
         isAtLeast: (value, min) => {
             if(typeof value !== "string" && typeof value !== "number" && typeof value !== "bigint" &&
                 typeof min !== "string" && typeof min !== "number" && typeof min !== "bigint"
             ) throw new Error("Inputs must be valid numbers!");
+
             if(typeof value !== "string") value = value.toString();
             if(typeof min !== "string")   min   = min.toString();
+
             if(BIG_INT_REGEX.test(value) || BIG_INT_REGEX.test(min)) {
                 if(!BIG_INT_REGEX.test(value) && !REAL_NUMBERS_REGEX.test(value) || !BIG_INT_REGEX.test(min) && !REAL_NUMBERS_REGEX.test(min)) 
                     throw new Error("Inputs must be valid numbers!");
+
                 value = BigInt(value.replace(/n$/, ""));
                 min   = BigInt(min.replace(/n$/, ""));
-            } else if(REAL_NUMBERS_REGEX.test(value) && REAL_NUMBERS_REGEX.test(min)) {
+            }
+            else if(REAL_NUMBERS_REGEX.test(value) && REAL_NUMBERS_REGEX.test(min)) {
                 value = Number(value);
                 min   = Number(min);
-            } else throw new Error("Inputs must be valid numbers!");
+            }
+            else throw new Error("Inputs must be valid numbers!");
+
             return value >= min;
         },
 
@@ -110,17 +204,23 @@ const Validator = (() => {
             if(typeof value !== "string" && typeof value !== "number" && typeof value !== "bigint" &&
                 typeof max !== "string" && typeof max !== "number" && typeof max !== "bigint"
             ) throw new Error("Inputs must be valid numbers!");
+
             if(typeof value !== "string") value = value.toString();
             if(typeof max !== "string")   max   = max.toString();
+
             if(BIG_INT_REGEX.test(value) || BIG_INT_REGEX.test(max)) {
                 if(!BIG_INT_REGEX.test(value) && !REAL_NUMBERS_REGEX.test(value) || !BIG_INT_REGEX.test(max) && !REAL_NUMBERS_REGEX.test(max))
                     throw new Error("Inputs must be valid numbers!");
+
                 value = BigInt(value.replace(/n$/, ""));
                 max   = BigInt(max.replace(/n$/, ""));
-            } else if(REAL_NUMBERS_REGEX.test(value) && REAL_NUMBERS_REGEX.test(max)) {
+            }
+            else if(REAL_NUMBERS_REGEX.test(value) && REAL_NUMBERS_REGEX.test(max)) {
                 value = Number(value);
                 max   = Number(max);
-            } else throw new Error("Inputs must be valid numbers!");
+            }
+            else throw new Error("Inputs must be valid numbers!");
+
             return value <= max;
         },
 
@@ -129,22 +229,28 @@ const Validator = (() => {
                 typeof min !== "string" && typeof min !== "number" && typeof min !== "bigint" &&
                 typeof max !== "string" && typeof max !== "number" && typeof max !== "bigint"
             ) throw new Error("Inputs must be valid numbers!");
+
             if(typeof value !== "string") value = value.toString();
             if(typeof min !== "string")   min   = min.toString();
             if(typeof max !== "string")   max   = max.toString();
+
             if(BIG_INT_REGEX.test(value) || BIG_INT_REGEX.test(min) || BIG_INT_REGEX.test(max)) {
                 if(!BIG_INT_REGEX.test(value) && !REAL_NUMBERS_REGEX.test(value) || 
                     !BIG_INT_REGEX.test(min) && !REAL_NUMBERS_REGEX.test(min) ||
                     !BIG_INT_REGEX.test(max) && !REAL_NUMBERS_REGEX.test(max)
                 ) throw new Error("Inputs must be valid numbers!");
+
                 value = BigInt(value.replace(/n$/, ""));
                 min   = BigInt(min.replace(/n$/, ""));
                 max   = BigInt(max.replace(/n$/, ""));
-            } else if(REAL_NUMBERS_REGEX.test(value) && REAL_NUMBERS_REGEX.test(min) && REAL_NUMBERS_REGEX.test(max)) {
+            }
+            else if(REAL_NUMBERS_REGEX.test(value) && REAL_NUMBERS_REGEX.test(min) && REAL_NUMBERS_REGEX.test(max)) {
                 value = Number(value);
                 min   = Number(min);
                 max   = Number(max);
-            } else throw new Error("Inputs must be valid numbers!");
+            }
+            else throw new Error("Inputs must be valid numbers!");
+
             return value >= min && value <= max;
         },
 
@@ -153,14 +259,14 @@ const Validator = (() => {
             return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(value);
         },
 
-        isPassword: (value, minlength = 4, maxlength = 64, pattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9])\S+$/) => {
+        isPassword: (value, minlength = 1, maxlength = 64, regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9])\S+$/) => {
             minlength = Number(minlength);
             maxlength = Number(maxlength);
 
             if(Number.isNaN(minlength) || Number.isNaN(maxlength) || !Number.isInteger(minlength) || !Number.isInteger(maxlength) || minlength > maxlength)
                 throw new Error("Length values must be valid integers, and the minimum value must not exceed the maximum!");
 
-            return pattern.test(value) && value.length >= minlength && value.length <= maxlength;
+            return regex.test(value) && value.length >= minlength && value.length <= maxlength;
         },
 
         isAlphanum: (value) => {
@@ -173,11 +279,11 @@ const Validator = (() => {
             return /[^a-zA-Z0-9\s]/.test(value);
         },
 
-        isTel: (value, format) => {
+        isTel: (value, format = 'SSSSSSSSSS') => {
             if (typeof format !== 'string') throw new Error('Format argument must be a string'); 
             if (typeof value !== 'string') return false;
 
-            format = (format.length >= 0) ? format : 'SSSSSSSSSS'; // syntax ->  + C{1,3} N{1,5} S{1,10} alphanum E{1,5}    
+            // syntax ->  + C{1,3} N{1,5} S{1,10} alphanum E{1,5}    
             let FORMAT_REGEX = /^((\+)?([^a-zA-Z0-9]*)(C{0,3}))?([^a-zA-Z0-9]*)(N{0,5})?([^a-zA-Z0-9]*)(S{1,10})([^a-zA-Z0-9]*)(([a-z]|[^a-zA-Z0-9])*(E{1,5}))?$/;
             if (!FORMAT_REGEX.test(format)) throw new Error('Invalid format!');
         
@@ -271,56 +377,347 @@ const Validator = (() => {
 
         isDate: (value, format = "DD/MM/YYYY") => {
             if(value instanceof Date) return !Number.isNaN(value.getTime());
-            if(!isValidDateFormat(format)) throw new Error("Invalid format!");
+
+            if(!isValidDate_format(format)) throw new Error("Invalid format!");
+
             const dateObject = extractDate(value, format);
+
             if(!dateObject) return false;
-            monthsDays[2] = ((dateObject.year % 4 === 0 && dateObject.year % 100 !== 0) || dateObject.year % 400 === 0) ? 28 : 29;
-            if(dateObject.day > monthsDays[dateObject.month] ||
+
+            months_days[2] = ((dateObject.year % 4 === 0 && dateObject.year % 100 !== 0) || dateObject.year % 400 === 0) ? 28 : 29;
+
+            if(dateObject.day > months_days[dateObject.month] ||
                 dateObject.day < 1 || dateObject.month > 12 || dateObject.month < 1 ||
                 dateObject.year === 0) return false;
+
             return true;
         },
 
         isDateAtLeast: (value, min, format = "DD/MM/YYYY") => {
             if(value instanceof Date) value = value.getTime();
+
             if(min instanceof Date) min = min.getTime();
+
             if(Number.isNaN(value) || Number.isNaN(min)) throw new Error("Invalid dates!");
+
             if(typeof value === "number" && typeof min === "number") return value >= min;
-            if(!isValidDateFormat(format)) throw new Error("Invalid format!");
+
+            if(!isValidDate_format(format)) throw new Error("Invalid format!");
+
             if(!Validator.isDate(value, format) || !Validator.isDate(min, format)) throw new Error("Invalid dates!");
+
             const dateObject = extractDate(value, format), minDateObj = extractDate(min, format);
+
             value = new Date(dateObject.year, dateObject.month - 1, dateObject.day).getTime();
             min   = new Date(minDateObj.year, minDateObj.month - 1, minDateObj.day).getTime();
+
             return value >= min;
         },
 
         isDateAtMost: (value, max, format = "DD/MM/YYYY") => {
             if(value instanceof Date) value = value.getTime();
+
             if(max instanceof Date) max = max.getTime();
+
             if(Number.isNaN(value) || Number.isNaN(max)) throw new Error("Invalid dates!");
+
             if(typeof value === "number" && typeof max === "number") return value <= max;
-            if(!isValidDateFormat(format)) throw new Error("Invalid format!");
+
+            if(!isValidDate_format(format)) throw new Error("Invalid format!");
+
             if(!Validator.isDate(value, format) || !Validator.isDate(max, format)) throw new Error("Invalid dates!");
+
             const dateObject = extractDate(value, format), maxDateObj = extractDate(max, format);
+
             value = new Date(dateObject.year, dateObject.month - 1, dateObject.day).getTime();
             max   = new Date(maxDateObj.year, maxDateObj.month - 1, maxDateObj.day).getTime();
+
             return value <= max;
         },
 
         isDateInRange: (value, min, max, format = "DD/MM/YYYY") => {
             if(value instanceof Date) value = value.getTime();
+
             if(min instanceof Date) min = min.getTime();
+
             if(max instanceof Date) max = max.getTime();
+
             if(Number.isNaN(value) || Number.isNaN(min) || Number.isNaN(max)) throw new Error("Invalid dates!");
+
             if(typeof value === "number" && typeof min === "number" && typeof max === "number") return value >= min && value <= max;
-            if(!isValidDateFormat(format)) throw new Error("Invalid format!");
+
+            if(!isValidDate_format(format)) throw new Error("Invalid format!");
+
             if(!Validator.isDate(value, format) || !Validator.isDate(min, format) || !Validator.isDate(max, format))
                 throw new Error("Invalid dates!");
+
             const dateObject = extractDate(value, format), minDateObj = extractDate(min, format), maxDateObj = extractDate(max, format);
+
             value = new Date(dateObject.year, dateObject.month - 1, dateObject.day).getTime();
             min   = new Date(minDateObj.year, minDateObj.month - 1, minDateObj.day).getTime();
             max   = new Date(maxDateObj.year, maxDateObj.month - 1, maxDateObj.day).getTime();
+
             return value >= min && value <= max;
+        },
+
+        validate: (inputGroup, callback, messages = Validator.messages) => {
+            if(!(inputGroup instanceof HTMLElement)) throw new Error("Feed valid input group!");
+
+            if(inputGroup.closest("form")) inputGroup.closest("form").setAttribute("novalidate", "");
+
+            const inputs = Array.from(inputGroup.querySelectorAll("input[data-validate]"));
+            
+            let invalidInputsCount = 0;
+
+            inputGroup.addEventListener("input", (event) => {
+                const input = event.target.closest("input");
+                
+                if(inputs.includes(input)) inputValidation(input, messages);
+            });
+
+            inputGroup.addEventListener("submit", (event) => {
+                invalidInputsCount = 0;
+                inputs.forEach(input => inputValidation(input, messages));
+
+                if(invalidInputsCount !== 0) event.preventDefault();
+            });
+
+            function inputValidation(input, messages) {
+                const value     = input.value.trim();
+                const required  = input.required;
+                let   type      = (supported_types.includes(input.type)) ? input.type      : "text";
+                const step      = input.hasAttribute("step")             ? input.step      : "any";
+                const min       = input.hasAttribute("min")              ? input.min       : null;
+                const max       = input.hasAttribute("max")              ? input.max       : null;
+                const minlength = input.hasAttribute("minlength")        ? input.minlength : null;
+                const maxlength = input.hasAttribute("maxlength")        ? input.maxlength : null;
+                const pattern   = input.hasAttribute("pattern")          ? input.pattern   : null;
+
+                const validation_type = input.getAttribute("data-validate");
+
+                if(validation_type.length > 0 && supported_types.includes(validation_type)) type = validation_type;
+
+                const result = {
+                    message: null,
+                    valid  : false
+                };
+
+                if(required) {
+                    if(Validator.isEmpty(value)) {
+                        result.message = messages.required[0];
+                        invalidInputsCount++;
+                        return callback(input, result);
+                    }
+
+                    result.message = messages.required[1];
+                }
+
+                // if(type === "text" && value.length > 0) {
+                    
+                // }
+
+                if(type === "password" && value.length > 0) {
+                    let regex = undefined;
+
+                    if(pattern) regex = new RegExp(`^${pattern}$`);
+
+                    if(!Validator.isPassword(value, undefined, undefined, regex)) {
+                        result.message = messages.password[0];
+                        invalidInputsCount++;
+                        return callback(input, result);
+                    }
+
+                    result.message = messages.password[1];
+                }
+
+                if(type === "email" && value.length > 0) {
+                    if(!Validator.isEmail(value)) {
+                        result.message = messages.email[0];
+                        invalidInputsCount++;
+                        return callback(input, result);
+                    }
+
+                    result.message = messages.email[1];
+                }
+
+                if(type === "number" && value.length > 0) {
+                    let set = Validator.INTEGER;
+
+                    if(!Validator.isNumber(step) && step !== "any") throw new Error("Invalid step value!");
+
+                    if(!Validator.isNumber(step, Validator.INTEGER) && step !== "any") set = Validator.REAL;
+
+                    if(!Validator.isNumber(value, set)) {
+                        result.message = messages.number[0];
+                        invalidInputsCount++;
+                        return callback(input, result);
+                    }
+
+                    if(Validator.isNumber(step) && !Validator.isMultipleOf(value, step)) {
+                        result.message = messages.number[0];
+                        invalidInputsCount++;
+                        return callback(input, result);
+                    }
+
+                    result.message = messages.number[1];
+                }
+
+                if(type === "tel" && value.length > 0) {
+                    const telFormat = input.hasAttribute("data-format-tel") ? input.getAttribute("data-format-tel") : undefined;
+
+                    if(!Validator.isTel(value, telFormat)) {
+                        result.message = messages.tel[0];
+                        invalidInputsCount++;
+                        return callback(input, result);
+                    }
+
+                    result.message = messages.tel[1];
+                }
+
+                if(type === "url" && value.length > 0) {
+                    if(!Validator.isURL(value)) {
+                        result.message = messages.url[0];
+                        invalidInputsCount++;
+                        return callback(input, result);
+                    }
+
+                    result.message = messages.url[1];
+                }
+
+                if(type === "date" && value.length > 0) {
+                    const date_format = input.hasAttribute("data-format-date") ? input.getAttribute("data-format-date") : undefined;
+
+                    if(!Validator.isDate(value, date_format)) {
+                        result.message = messages.date;
+                        invalidInputsCount++;
+                        return callback(input, result);
+                    }
+
+                    result.message = messages.date[1];
+
+                    if(min && Validator.isDate(min, date_format) && !Validator.isDateAtLeast(value, min, date_format)) {
+                        result.message = messages.min[0];
+                        invalidInputsCount++;
+                        return callback(input, result);
+                    } else result.message = messages.min[1];
+
+                    if(max && Validator.isDate(max, date_format) && !Validator.isDateAtMost(value, max, date_format)) {
+                        result.message = messages.max[0];
+                        invalidInputsCount++;
+                        return callback(input, result);
+                    } else result.message = messages.max[1];
+                }
+
+                if(min && value.length > 0 && min_max_types.includes(type)) {
+                    if(!Validator.isAtLeast(value, min)) {
+                        result.message = messages.min[0];
+                        invalidInputsCount++;
+                        return callback(input, result);
+                    }
+
+                    result.message = messages.min[1];
+                }
+
+                if(max && value.length > 0 && min_max_types.includes(type)) {
+                    if(!Validator.isAtMost(value, max)) {
+                        result.message = messages.max[0];
+                        invalidInputsCount++;
+                        return callback(input, result);
+                    }
+
+                    result.message = messages.max[1];
+                }
+
+                if(minlength && value.length > 0 && length_types.includes(type)) {
+                    if(!Validator.isAtLeast(value.length, minlength)) {
+                        result.message = messages.minlength[0];
+                        invalidInputsCount++;
+                        return callback(input, result);
+                    }
+
+                    result.message = messages.minlength[1];
+                }
+
+                if(maxlength && value.length > 0 && length_types.includes(type)) {
+                    if(!Validator.isAtMost(value.length, minlength)) {
+                        result.message = messages.maxlength[0];
+                        invalidInputsCount++;
+                        return callback(input, result);
+                    }
+
+                    result.message = messages.maxlength[1];
+                }
+
+                if(pattern && value.length > 0) {
+                    regex = new RegExp(`^${pattern}$`);
+                    
+                    if(!regex.test(value)) {
+                        result.message = messages.pattern[0];
+                        invalidInputsCount++;
+                        return callback(input, result);
+                    }
+
+                    result.message = messages.pattern[1];
+                }
+
+                result.valid = true;
+                return callback(input, result);
+            }
+        },
+
+        messages: {
+            required: [
+                "Requis!",
+                "Champ obligatoire complété."
+            ],
+            text: [
+                "Entrée invalide!",
+                "Entrée valide."
+            ],
+            password: [
+                "Mot de passe invalide!",
+                "Mot de passe valide."
+            ],
+            email: [
+                "E-mail invalide!",
+                "E-mail valide."
+            ],
+            number: [
+                "Numéro invalide!",
+                "Numéro valide."
+            ],
+            tel: [
+                "Numéro de téléphone invalide!",
+                "Numéro de téléphone valide."
+            ],
+            url: [
+                "URL invalide!",
+                "URL valide."
+            ],
+            date: [
+                "Date invalide!",
+                "Date valide."
+            ],
+            min: [
+                "Valeur inférieure au minimum!",
+                "La valeur est dans la plage autorisée."
+            ],
+            max: [
+                "Valeur maximale dépassée!",
+                "La valeur est dans la plage autorisée."
+            ],
+            minlength: [
+                "Trop court!",
+                "Longueur minimale atteinte."
+            ],
+            maxlength: [
+                "Trop long!",
+                "Dans la longueur maximale."
+            ],
+            pattern: [
+                "Format non correct!",
+                "Format valide."
+            ]
         }
     };
 })();
