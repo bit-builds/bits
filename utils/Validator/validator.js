@@ -29,7 +29,8 @@ const Validator = (() => {
         "number",
         "tel",
         "url",
-        "date"
+        "date",
+        "select"
     ];
 
     const min_max_types = [
@@ -465,14 +466,23 @@ const Validator = (() => {
 
             if(inputGroup.closest("form")) inputGroup.closest("form").setAttribute("novalidate", "");
 
-            const inputs = Array.from(inputGroup.querySelectorAll("input[data-validate]"));
+            const inputs = inputGroup.querySelectorAll("input[data-validate], select[data-validate]");
+
+            console.log(inputs);
+            
             
             let invalidInputsCount = 0;
 
             inputGroup.addEventListener("input", (event) => {
                 const input = event.target.closest("input");
                 
-                if(inputs.includes(input)) inputValidation(input, messages);
+                if(Array.from(inputs).includes(input)) inputValidation(input, messages);
+            });
+
+            inputGroup.addEventListener("change", (event) => {
+                const input = event.target.closest("select");
+                
+                if(Array.from(inputs).includes(input)) inputValidation(input, messages);
             });
 
             inputGroup.addEventListener("submit", (event) => {
