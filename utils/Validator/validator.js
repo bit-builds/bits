@@ -465,29 +465,24 @@ const Validator = (() => {
             if(!(inputGroup instanceof HTMLElement)) throw new Error("Feed valid input group!");
 
             if(inputGroup.closest("form")) inputGroup.closest("form").setAttribute("novalidate", "");
-
-            const inputs = inputGroup.querySelectorAll("input[data-validate], select[data-validate]");
-
-            console.log(inputs);
-            
             
             let invalidInputsCount = 0;
 
             inputGroup.addEventListener("input", (event) => {
                 const input = event.target.closest("input");
                 
-                if(Array.from(inputs).includes(input)) inputValidation(input, messages);
+                if(input.hasAttribute("data-validate")) inputValidation(input, messages);
             });
 
             inputGroup.addEventListener("change", (event) => {
                 const input = event.target.closest("select");
                 
-                if(Array.from(inputs).includes(input)) inputValidation(input, messages);
+                if(input.hasAttribute("data-validate")) inputValidation(input, messages);
             });
 
             inputGroup.addEventListener("submit", (event) => {
                 invalidInputsCount = 0;
-                inputs.forEach(input => inputValidation(input, messages));
+                form.querySelectorAll("input[data-validate], select[data-validate]").forEach(input => inputValidation(input, messages));
 
                 if(invalidInputsCount !== 0) event.preventDefault();
             });
@@ -499,8 +494,8 @@ const Validator = (() => {
                 const step      = input.hasAttribute("step")             ? input.step      : "any";
                 const min       = input.hasAttribute("min")              ? input.min       : null;
                 const max       = input.hasAttribute("max")              ? input.max       : null;
-                const minlength = input.hasAttribute("minlength")        ? input.minlength : null;
-                const maxlength = input.hasAttribute("maxlength")        ? input.maxlength : null;
+                const minlength = input.hasAttribute("minlength")        ? input.getAttribute("minlength") : null;
+                const maxlength = input.hasAttribute("maxlength")        ? input.getAttribute("maxlength") : null;
                 const pattern   = input.hasAttribute("pattern")          ? input.pattern   : null;
 
                 const validation_type = input.getAttribute("data-validate");
@@ -521,10 +516,6 @@ const Validator = (() => {
 
                     result.message = messages.required[1];
                 }
-
-                // if(type === "text" && value.length > 0) {
-                    
-                // }
 
                 if(type === "password" && value.length > 0) {
                     let regex = undefined;
@@ -551,11 +542,9 @@ const Validator = (() => {
                 }
 
                 if(type === "number" && value.length > 0) {
-                    let set = Validator.INTEGER;
+                    let set = Validator.REAL;
 
                     if(!Validator.isNumber(step) && step !== "any") throw new Error("Invalid step value!");
-
-                    if(!Validator.isNumber(step, Validator.INTEGER) && step !== "any") set = Validator.REAL;
 
                     if(!Validator.isNumber(value, set)) {
                         result.message = messages.number[0];
@@ -649,7 +638,7 @@ const Validator = (() => {
                 }
 
                 if(maxlength && value.length > 0 && length_types.includes(type)) {
-                    if(!Validator.isAtMost(value.length, minlength)) {
+                    if(!Validator.isAtMost(value.length, maxlength)) {
                         result.message = messages.maxlength[0];
                         invalidInputsCount++;
                         return callback(input, result);
