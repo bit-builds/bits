@@ -464,20 +464,20 @@ const Validator = (() => {
         validate: (inputGroup, callback, messages = Validator.messages) => {
             if(!(inputGroup instanceof HTMLElement)) throw new Error("Feed valid input group!");
 
-            if(inputGroup.closest("form")) inputGroup.closest("form").setAttribute("novalidate", "");
+            if(inputGroup.matches("form")) inputGroup.setAttribute("novalidate", "");
             
             let invalidInputsCount = 0;
 
             inputGroup.addEventListener("input", (event) => {
-                const input = event.target.closest("input");
+                const input = event.target;
                 
-                if(input.hasAttribute("data-validate")) inputValidation(input, messages);
+                if(input.matches("input") && input.hasAttribute("data-validate")) inputValidation(input, messages);
             });
 
             inputGroup.addEventListener("change", (event) => {
-                const input = event.target.closest("select");
+                const input = event.target;
                 
-                if(input.hasAttribute("data-validate")) inputValidation(input, messages);
+                if(input.matches("select") && input.hasAttribute("data-validate")) inputValidation(input, messages);
             });
 
             inputGroup.addEventListener("submit", (event) => {
