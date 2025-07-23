@@ -22,14 +22,63 @@ const Validator = (() => {
         31  //Dec
     ];
 
+    const color_formats = [
+        "NAMED",
+        "HEX",
+        "RGB",
+        "HSL",
+        "HWB",
+        "LAB",
+        "LCH",
+        "OKLAB",
+        "OKLCH",
+        "RELATIVE"
+    ];
+
+    const css_named_colors = [
+        "aliceblue", "antiquewhite", "aqua", "aquamarine", "azure",
+        "beige", "bisque", "black", "blanchedalmond", "blue",
+        "blueviolet", "brown", "burlywood", "cadetblue", "chartreuse",
+        "chocolate", "coral", "cornflowerblue", "cornsilk", "crimson",
+        "cyan", "darkblue", "darkcyan", "darkgoldenrod", "darkgray",
+        "darkgreen", "darkgrey", "darkkhaki", "darkmagenta", "darkolivegreen",
+        "darkorange", "darkorchid", "darkred", "darksalmon", "darkseagreen",
+        "darkslateblue", "darkslategray", "darkslategrey", "darkturquoise", "darkviolet",
+        "deeppink", "deepskyblue", "dimgray", "dimgrey", "dodgerblue",
+        "firebrick", "floralwhite", "forestgreen", "fuchsia", "gainsboro",
+        "ghostwhite", "gold", "goldenrod", "gray", "green",
+        "greenyellow", "grey", "honeydew", "hotpink", "indianred",
+        "indigo", "ivory", "khaki", "lavender", "lavenderblush",
+        "lawngreen", "lemonchiffon", "lightblue", "lightcoral", "lightcyan",
+        "lightgoldenrodyellow", "lightgray", "lightgreen", "lightgrey", "lightpink",
+        "lightsalmon", "lightseagreen", "lightskyblue", "lightslategray", "lightslategrey",
+        "lightsteelblue", "lightyellow", "lime", "limegreen", "linen",
+        "magenta", "maroon", "mediumaquamarine", "mediumblue", "mediumorchid",
+        "mediumpurple", "mediumseagreen", "mediumslateblue", "mediumspringgreen", "mediumturquoise",
+        "mediumvioletred", "midnightblue", "mintcream", "mistyrose", "moccasin",
+        "navajowhite", "navy", "oldlace", "olive", "olivedrab",
+        "orange", "orangered", "orchid", "palegoldenrod", "palegreen",
+        "paleturquoise", "palevioletred", "papayawhip", "peachpuff", "peru",
+        "pink", "plum", "powderblue", "purple", "rebeccapurple",
+        "red", "rosybrown", "royalblue", "saddlebrown", "salmon",
+        "sandybrown", "seagreen", "seashell", "sienna", "silver",
+        "skyblue", "slateblue", "slategray", "slategrey", "snow",
+        "springgreen", "steelblue", "tan", "teal", "thistle",
+        "tomato", "turquoise", "violet", "wheat", "white",
+        "whitesmoke", "yellow", "yellowgreen"
+    ];
+
     const supported_types = [
-        "text",
+        "alpha",
+        "alphanum",
+        "specialchar",
         "password",
         "email",
         "number",
         "tel",
         "url",
         "date",
+        "color",
         "select"
     ];
 
@@ -39,7 +88,9 @@ const Validator = (() => {
     ];
 
     const length_types = [
-        "text",
+        "alpha",
+        "alphanum",
+        "specialchar",
         "password",
         "email",
         "tel",
@@ -71,12 +122,6 @@ const Validator = (() => {
     };
 
     return {
-        REAL    : "R",
-        RATIONAL: "Q",
-        INTEGER : "Z",
-        WHOLE   : "W",
-        NATURAL : "N",
-
         isEmpty: (value) => {
             if(Array.isArray(value) || typeof value === "string")
                 return value.length === 0;
@@ -89,6 +134,12 @@ const Validator = (() => {
 
             return value === null || value === undefined;
         },
+
+        REAL    : "R",
+        RATIONAL: "Q",
+        INTEGER : "Z",
+        WHOLE   : "W",
+        NATURAL : "N",
 
         isNumber: (value, set = Validator.REAL) => {
             set = set.toUpperCase();
@@ -270,9 +321,19 @@ const Validator = (() => {
             return regex.test(value) && value.length >= minlength && value.length <= maxlength;
         },
 
+        isAlpha: (value) => {
+            if(typeof value !== "string") return false;
+            return /^\p{L}+(?: \p{L}+)*$/u.test(value);
+        },
+
         isAlphanum: (value) => {
             if(typeof value !== "string") return false;
-            return /^[a-zA-Z0-9]+$/.test(value);
+            return /^[\p{L}\p{N}]+$/u.test(value);
+        },
+
+        isSpecialChar: (value) => {
+            if(typeof value !== "string") return false;
+            return /^[^a-zA-Z0-9\s]+$/.test(value);
         },
 
         hasSpecialChar: (value) => {
@@ -461,46 +522,258 @@ const Validator = (() => {
             return value >= min && value <= max;
         },
 
+        NAMED    : "NAMED",
+        HEX      : "HEX",
+        RGB      : "RGB",
+        HSL      : "HSL",
+        HWB      : "HWB",
+        LAB      : "LAB",
+        LCH      : "LCH",
+        OKLAB    : "OKLAB",
+        OKLCH    : "OKLCH",
+        RELATIVE : "RELATIVE",
+
+        isColorNamed: (value) => {
+            if(typeof value !== "string") return false;
+            return css_named_colors.includes(value);
+        },
+
+        isColorHex: (value) => {
+            if(typeof value !== "string") return false;
+            return /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(value);
+        },
+
+        isColorRgb: (value) => {
+            if(typeof value !== "string") return false;
+
+            const RGB_REGEX = /^(rgba|rgb)\((\d{1,3}(?:\.\d+)?%?) (?:, | )(\d{1,3}(?:\.\d+)?%?) (?:, | )(\d{1,3}(?:\.\d+)?%?)(?: (?:\/|,) (0|1|0?\.\d+|[0-9]{1,3}(?:\.\d+)?%))?\)$/;
+
+            if(!RGB_REGEX.test(value)) return false;
+
+            const match = value.match(RGB_REGEX);
+
+            if(match[2].endsWith("%")) {
+                const r = Number(match[2].slice(0, -1));
+                if(Number.isNaN(r) || r < 0 || r > 100) return false;
+            }
+            else {
+                const r = Number(match[2]);
+                if(Number.isNaN(r) || r < 0 || r > 255) return false;
+            }
+
+            if(match[3].endsWith("%")) {
+                const g = Number(match[3].slice(0, -1));
+                if(Number.isNaN(g) || g < 0 || g > 100) return false;
+            }
+            else {
+                const g = Number(match[3]);
+                if(Number.isNaN(g) || g < 0 || g > 255) return false;
+            }
+            
+            if(match[4].endsWith("%")) {
+                const b = Number(match[4].slice(0, -1));
+                if(Number.isNaN(b) || b < 0 || b > 100) return false;
+            }
+            else {
+                const b = Number(match[4]);
+                if(Number.isNaN(b) || b < 0 || b > 255) return false;
+            }
+
+            if(match[5]) {
+                if(match[5].endsWith("%")) {
+                    const a = Number(match[5].slice(0, -1));
+                    if(Number.isNaN(a) || a < 0 || a > 100) return false;
+                }
+                else {
+                    const a = Number(match[5]);
+                    if(Number.isNaN(a) || a < 0 || a > 1) return false;
+                }
+            }
+
+            return true;
+        },
+
+        isColorHsl: (value) => {
+            if(typeof value !== "string") return false;
+
+            const HSL_REGEX = /!/;
+
+            if(!HSL_REGEX.test(value)) return false;
+
+            const match = value.match(HSL_REGEX);
+
+            const a = Number(match[10].replace("%", ""));
+
+            if(match[11] === "%" && (a < 0 || a > 100)) return false;
+
+            return true;
+        },
+
+        isColorHwb: (value) => {
+            if(typeof value !== "string") return false;
+        },
+
+        isColorLab: (value) => {
+            if(typeof value !== "string") return false;
+        },
+
+        isColorLch: (value) => {
+            if(typeof value !== "string") return false;
+        },
+
+        isColorOklab: (value) => {
+            if(typeof value !== "string") return false;
+        },
+
+        isColorOklch: (value) => {
+            if(typeof value !== "string") return false;
+        },
+
+        isColorRelative: (value) => {
+            if(typeof value !== "string") return false;
+        },
+
+        isColor: (value, format = Validator.RGB) => {
+            if(typeof value !== "string") return false;
+
+            format = format.toUpperCase();
+            value  = value.toLowerCase();
+
+            if(!color_formats.includes(format)) throw new Error("Invalid color format!");
+
+            if(format === "NAMED") return Validator.isColorNamed(value);
+
+            if(format === "HEX") return Validator.isColorHex(value);
+
+            if(format === "RGB") return Validator.isColorRgb(value);
+
+            if(format === "HSL") {
+                const HSL_REGEX = /^hsl\(\s*(\d{1,3})\s+(\d{1,3})%\s+(\d{1,3})%\s*(?:\/\s*(0|1|0?\.\d+)\s*)?\)$/;
+
+                if(!HSL_REGEX.test(value)) return false;
+
+                const [, h, s, l, a] = value.match(HSL_REGEX);
+
+                if(!Validator.isInRange(h, 0, 360) || !Validator.isInRange(s, 0, 100) || !Validator.isInRange(l, 0, 100)) return false;
+
+                if(a !== undefined && !Validator.isInRange(a, 0, 1)) return false;
+
+                return true;
+            }
+
+            if(format === "HSLA") {}
+            
+            return false;
+        },
+
         validate: (inputGroup, callback, messages = Validator.messages) => {
             if(!(inputGroup instanceof HTMLElement)) throw new Error("Feed valid input group!");
 
             if(inputGroup.matches("form")) inputGroup.setAttribute("novalidate", "");
+
+            let dependencies = inputGroup.hasAttribute("data-dependencies") ? inputGroup.getAttribute("data-dependencies") : null;
+
+            inputGroup.querySelectorAll("[data-dependencies]").forEach(element => dependencies += element.hasAttribute("data-dependencies") ? element.getAttribute("data-dependencies") : "");
+
+            if(dependencies) {
+                dependencies = [...dependencies.matchAll(/(order|sum|unique)\(\s*([^)]+?)\s*\)/gi)];
+
+                dependencies.forEach((dependency, index) => {
+                    const type = dependency[1];
+                    const args = dependency[2].split(/\s*,\s*/);
+
+                    if(args.length < 2) throw new Error("Dependencies require at least 2 arguments each!");
+
+                    if(type === "sum") {
+                        const target = document.getElementById(args[0].replace("#", ""));
+                        if(!target) throw new Error("Invalid target id!");
+                        target.setAttribute("data-dependency", "sum");
+                        target.readOnly = true;
+
+                        for(let i = 1; i < args.length; i++) {
+                            const benefactor = document.getElementById(args[i].replace("#", ""));
+                            if(!benefactor) throw new Error("Invalid benefactor id!");
+                            benefactor.setAttribute(`data-benefactor-${index + 1}`, target.id);
+                        }
+                    }
+
+                    if(type === "unique") {
+                        for(let i = 0; i < args.length; i++) {
+                            const benefactor = document.getElementById(args[i].replace("#", ""));
+                            if(!benefactor) throw new Error("Invalid benefactor id!");
+                            benefactor.setAttribute(`data-unique-${index + 1}`, `set${index + 1}`);
+                        }
+                    }
+
+                    if(type === "order") {
+                        for(let i = 0; i < args.length; i++) {
+                            const sequential = document.getElementById(args[i].replace("#", ""));
+                            if(!sequential) throw new Error("Invalid sequential id!");
+                            sequential.setAttribute(`data-sequential-${index + 1}`, `set${index + 1}`);
+                        }
+                    }
+                });
+            }
             
             let invalidInputsCount = 0;
+            const validated        = new Set();
 
             inputGroup.addEventListener("input", (event) => {
                 const input = event.target;
                 
                 if(input.matches("input") && input.hasAttribute("data-validate")) inputValidation(input, messages);
+
+                validated.clear();
             });
 
             inputGroup.addEventListener("change", (event) => {
                 const input = event.target;
                 
                 if(input.matches("select") && input.hasAttribute("data-validate")) inputValidation(input, messages);
+
+                validated.clear();
             });
 
             inputGroup.addEventListener("submit", (event) => {
                 invalidInputsCount = 0;
-                form.querySelectorAll("input[data-validate], select[data-validate]").forEach(input => inputValidation(input, messages));
+
+                const inputs = inputGroup.querySelectorAll("input[data-validate], select[data-validate]");
+                for(const input of inputs) inputValidation(input, messages);
+
+                validated.clear();
 
                 if(invalidInputsCount !== 0) event.preventDefault();
             });
 
             function inputValidation(input, messages) {
-                const value     = input.value.trim();
-                const required  = input.required;
-                let   type      = (supported_types.includes(input.type)) ? input.type      : "text";
-                const step      = input.hasAttribute("step")             ? input.step      : "any";
-                const min       = input.hasAttribute("min")              ? input.min       : null;
-                const max       = input.hasAttribute("max")              ? input.max       : null;
-                const minlength = input.hasAttribute("minlength")        ? input.getAttribute("minlength") : null;
-                const maxlength = input.hasAttribute("maxlength")        ? input.getAttribute("maxlength") : null;
-                const pattern   = input.hasAttribute("pattern")          ? input.pattern   : null;
+                const value      = input.value.trim();
+                const required   = input.required;
+                let   type       = (supported_types.includes(input.type)) ? input.type                            : "text";
+                const min        = input.hasAttribute("min")              ? input.getAttribute("min")             : null;
+                const max        = input.hasAttribute("max")              ? input.getAttribute("max")             : null;
+                const step       = input.hasAttribute("step")             ? input.getAttribute("step")            : "any";
+                const minlength  = input.hasAttribute("minlength")        ? input.getAttribute("minlength")       : null;
+                const maxlength  = input.hasAttribute("maxlength")        ? input.getAttribute("maxlength")       : null;
+                const pattern    = input.hasAttribute("pattern")          ? input.getAttribute("pattern")         : null;
+                const format     = input.hasAttribute("data-format")      ? input.getAttribute("data-format")     : undefined;
+
+                const benefactor = [];
+                const dependency = [];
+                const unique     = [];
+                const order      = [];
+
+                for(const key in input.dataset) {
+                    if(key.startsWith("benefactor-")) benefactor.push({ key: key, id: input.dataset[key] });
+                    if(key.startsWith("dependency-")) dependency.push({ key: key, id: input.dataset[key] });
+                    if(key.startsWith("unique-")) unique.push({ key : key, set: input.dataset[key] });
+                    if(key.startsWith("sequential-")) order.push({ key : key, set : input.dataset[key] });
+                }
 
                 const validation_type = input.getAttribute("data-validate");
-
                 if(validation_type.length > 0 && supported_types.includes(validation_type)) type = validation_type;
+
+                const custom_error_message   = input.hasAttribute("data-message-error")   ? input.getAttribute("data-message-error")   : null;
+                const custom_success_message = input.hasAttribute("data-message-success") ? input.getAttribute("data-message-success") : null;
 
                 const result = {
                     message: null,
@@ -517,28 +790,58 @@ const Validator = (() => {
                     result.message = messages.required[1];
                 }
 
+                if(type === "alpha" && value.length > 0) {
+                    if(!Validator.isAlpha(value)) {
+                        result.message = (custom_error_message) ? custom_error_message : messages.alpha[0];
+                        invalidInputsCount++;
+                        return callback(input, result);
+                    }
+
+                    result.message = (custom_success_message) ? custom_success_message : messages.alpha[1];
+                }
+
+                if(type === "alphanum" && value.length > 0) {
+                    if(!Validator.isAlphanum(value)) {
+                        result.message = (custom_error_message) ? custom_error_message : messages.alphanum[0];
+                        invalidInputsCount++;
+                        return callback(input, result);
+                    }
+
+                    result.message = (custom_success_message) ? custom_success_message : messages.alphanum[1];
+                }
+
+                if(type === "specialchar" && value.length > 0) {
+                    if(!Validator.isSpecialChar(value)) {
+                        result.message = (custom_error_message) ? custom_error_message : messages.specialchar[0];
+                        invalidInputsCount++;
+                        return callback(input, result);
+                    }
+
+                    result.message = (custom_success_message) ? custom_success_message : messages.specialchar[1];
+                }
+
                 if(type === "password" && value.length > 0) {
                     let regex = undefined;
 
                     if(pattern) regex = new RegExp(`^${pattern}$`);
 
                     if(!Validator.isPassword(value, undefined, undefined, regex)) {
-                        result.message = messages.password[0];
+                        result.message = (custom_error_message) ? custom_error_message : messages.password[0];
                         invalidInputsCount++;
                         return callback(input, result);
                     }
 
-                    result.message = messages.password[1];
+                    result.message = (custom_success_message) ? custom_success_message : messages.password[1];
                 }
 
                 if(type === "email" && value.length > 0) {
                     if(!Validator.isEmail(value)) {
-                        result.message = messages.email[0];
+                        result.message = (custom_error_message) ? custom_error_message : messages.email[0];
                         invalidInputsCount++;
                         return callback(input, result);
                     }
 
-                    result.message = messages.email[1];
+                    result.message = (custom_success_message) ? custom_success_message : messages.email[1];
                 }
 
                 if(type === "number" && value.length > 0) {
@@ -547,52 +850,48 @@ const Validator = (() => {
                     if(!Validator.isNumber(step) && step !== "any") throw new Error("Invalid step value!");
 
                     if(!Validator.isNumber(value, set)) {
-                        result.message = messages.number[0];
+                        result.message = (custom_error_message) ? custom_error_message : messages.number[0];
                         invalidInputsCount++;
                         return callback(input, result);
                     }
 
                     if(Validator.isNumber(step) && !Validator.isMultipleOf(value, step)) {
-                        result.message = messages.number[0];
+                        result.message = (custom_error_message) ? custom_error_message : messages.number[0];
                         invalidInputsCount++;
                         return callback(input, result);
                     }
 
-                    result.message = messages.number[1];
+                    result.message = (custom_success_message) ? custom_success_message : messages.number[1];
                 }
 
                 if(type === "tel" && value.length > 0) {
-                    const telFormat = input.hasAttribute("data-format-tel") ? input.getAttribute("data-format-tel") : undefined;
-
-                    if(!Validator.isTel(value, telFormat)) {
-                        result.message = messages.tel[0];
+                    if(!Validator.isTel(value, format)) {
+                        result.message = (custom_error_message) ? custom_error_message : messages.tel[0];
                         invalidInputsCount++;
                         return callback(input, result);
                     }
 
-                    result.message = messages.tel[1];
+                    result.message = (custom_success_message) ? custom_success_message : messages.tel[1];
                 }
 
                 if(type === "url" && value.length > 0) {
                     if(!Validator.isURL(value)) {
-                        result.message = messages.url[0];
+                        result.message = (custom_error_message) ? custom_error_message : messages.url[0];
                         invalidInputsCount++;
                         return callback(input, result);
                     }
 
-                    result.message = messages.url[1];
+                    result.message = (custom_success_message) ? custom_success_message : messages.url[1];
                 }
 
                 if(type === "date" && value.length > 0) {
-                    const date_format = input.hasAttribute("data-format-date") ? input.getAttribute("data-format-date") : undefined;
-
-                    if(!Validator.isDate(value, date_format)) {
-                        result.message = messages.date;
+                    if(!Validator.isDate(value, format)) {
+                        result.message = (custom_error_message) ? custom_error_message : messages.date[0];
                         invalidInputsCount++;
                         return callback(input, result);
                     }
 
-                    result.message = messages.date[1];
+                    result.message = (custom_success_message) ? custom_success_message : messages.date[1];
 
                     if(min && Validator.isDate(min, date_format) && !Validator.isDateAtLeast(value, min, date_format)) {
                         result.message = messages.min[0];
@@ -604,7 +903,17 @@ const Validator = (() => {
                         result.message = messages.max[0];
                         invalidInputsCount++;
                         return callback(input, result);
-                    } else result.message = messages.max[1];
+                    } else result.message =  messages.max[1];
+                }
+
+                if(type === "color") {
+                    if(!Validator.isColor(value, format)) {
+                        result.message = (custom_error_message) ? custom_error_message : messages.color[0];
+                        invalidInputsCount++;
+                        return callback(input, result);
+                    }
+
+                    result.message = (custom_success_message) ? custom_success_message : messages.color[1];
                 }
 
                 if(min && value.length > 0 && min_max_types.includes(type)) {
@@ -659,6 +968,115 @@ const Validator = (() => {
                     result.message = messages.pattern[1];
                 }
 
+                if(benefactor.length > 0 && value.length > 0) {
+                    for(const b of benefactor) {
+                        if(validated.has(b.key)) continue;
+
+                        const dependant = document.getElementById(b.id);
+                        if(!dependant) throw new Error("Invalid dependant id!");
+
+                        const benefactors = document.querySelectorAll(`[data-${b.key}="${b.id}"]`);
+                        let sum = 0;
+                        benefactors.forEach(input => sum += Validator.isNumber(input.value) ? Number(input.value) : 0);
+                        dependant.value = sum;
+
+                        validated.add(b.key);
+                    }
+
+                }
+
+                if(dependency.length > 0 && value.length > 0) {
+                    for(const d of dependency) {
+                        if(validated.has(d.key)) continue;
+
+                        const id = d.id;
+                        const benefactors = document.querySelectorAll(`[data-${d.key}="${id}"]`);
+                        let sum = 0;
+                        benefactors.forEach(input => sum += Validator.isNumber(input.value) ? Number(input.value) : 0);
+                        if(sum !== Number(value)) {
+                            result.message = messages.sum[0];
+                            invalidInputsCount++;
+                            return callback(input, result);
+                        }
+
+                        validated.add(d.key);
+                    }
+
+                    result.message = messages.sum[1];
+                }
+
+                if(unique.length > 0 && value.length > 0) {
+                    for(const u of unique) {
+                        if(validated.has(u.key)) continue;
+
+                        const set = document.querySelectorAll(`[data-${u.key}=${u.set}]`);
+                        for(const entry of set) {
+                            if(entry.value.length <= 0 || entry === input) continue;
+
+                            if(entry.value === value) {
+                                result.message = messages.unique[0];
+                                invalidInputsCount++;
+                                return callback(input, result);
+                            }
+
+                            result.message = messages.unique[1];
+                        }
+
+                        validated.add(u.key);
+                    }
+                }
+
+                if(order.length > 0 && value.length > 0) {
+                    for(const o of order) {
+                        if(validated.has(o.key)) continue;
+
+                        const set = document.querySelectorAll(`[data-${o.key}=${o.set}]`);
+                        let v;
+                        let orderType;
+                        for(const sequence of set) {
+                            if(sequence.value.length <= 0) continue;
+
+                            if(!orderType) orderType = (Validator.isDate(value, format)) ? "date" : "number";
+                            if(orderType !== type) throw new Error("Sequential inputs must be of the same type!");
+
+                            if(type === "number") {
+                                if(Number(sequence.value) < v) {
+                                    result.message = messages.order[0];
+                                    invalidInputsCount++;
+                                    callback(sequence, result);
+                                    return callback(input, result);
+                                } else {
+                                    result.valid   = true;
+                                    result.message = messages.order[1];
+                                    callback(sequence, result);
+                                }
+
+                                v = Number(sequence.value);
+                            } else {
+                                v = (v === undefined ||  v === null) ? sequence.value : v;
+
+                                if(!Validator.isDateAtLeast(sequence.value, v, format)) {
+                                    result.message = messages.order[0];
+                                    invalidInputsCount++;
+                                    callback(sequence, result);
+                                    return callback(input, result);
+                                } else {
+                                    result.valid   = true;
+                                    result.message = messages.order[1];
+                                    callback(sequence, result);
+                                }
+
+                                v = sequence.value;
+                            }
+                            
+                            result.valid   = false;
+                            result.message = messages.order[1];
+                        }
+
+                        validated.add(o.key);
+                    }
+                }
+
                 result.valid = true;
                 return callback(input, result);
             }
@@ -669,7 +1087,15 @@ const Validator = (() => {
                 "Requis!",
                 "Champ obligatoire complété."
             ],
-            text: [
+            alpha: [
+                "Entrée invalide!",
+                "Entrée valide."
+            ],
+            alphanum: [
+                "Entrée invalide!",
+                "Entrée valide."
+            ],
+            specialchar: [
                 "Entrée invalide!",
                 "Entrée valide."
             ],
@@ -697,6 +1123,10 @@ const Validator = (() => {
                 "Date invalide!",
                 "Date valide."
             ],
+            color: [
+                "Couleur invalide!",
+                "Couleur valide."
+            ],
             min: [
                 "Valeur inférieure au minimum!",
                 "La valeur est dans la plage autorisée."
@@ -716,6 +1146,18 @@ const Validator = (() => {
             pattern: [
                 "Format non correct!",
                 "Format valide."
+            ],
+            sum: [
+                "Somme invalide!",
+                "Somme valide."
+            ],
+            unique: [
+                "L'entrée doit être unique!",
+                "L'entrée est unique."
+            ],
+            order: [
+                "Les entrées ne sont pas dans l'ordre!",
+                "Les entrées sont en ordre."
             ]
         }
     };
