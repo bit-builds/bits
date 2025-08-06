@@ -354,7 +354,7 @@ const Validator = (() => {
             return /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(value);
         },
 
-        validateInput: function(element, messages = ValidatorMessages) {
+        validateInput: function(element, messages = ValidatorMessages, ignoreMessagesDiff = false) {
             if(!element.matches(`input[data-vld-type], select[data-vld-type], textarea[data-vld-type]`)) return;
 
             let input     = element;
@@ -371,12 +371,14 @@ const Validator = (() => {
             let endDate   = input.dataset.vldEnddate;
             let pattern   = input.dataset.vldPattern;
             let isValid   = true;
-
-            let validatorTypes = Object.keys(ValidatorMessages);
-            for(let i = 0; i < validatorTypes.length; i++) {
-                let rule = validatorTypes[i];
-                if(messages[rule]) continue;
-                messages[rule] = ValidatorMessages[rule];
+            
+            if(ignoreMessagesDiff === false) {
+                let validatorTypes = Object.keys(ValidatorMessages);
+                for(let i = 0; i < validatorTypes.length; i++) {
+                    let rule = validatorTypes[i];
+                    if(messages[rule]) continue;
+                    messages[rule] = ValidatorMessages[rule];
+                }
             }
 
             if(!pattern && input.dataset.hasOwnProperty('vldErrmessage')) 
@@ -451,7 +453,7 @@ const Validator = (() => {
             }
 
 
-            if(bindingsMap.has(input)) {
+            if(isValid && bindingsMap.has(input)) {
                 let {operation, targets} = bindingsMap.get(input);
 
                 if(operation === 'equal') {
@@ -506,8 +508,19 @@ const Validator = (() => {
         },
 
         validate: function(container, messages = ValidatorMessages, callback) {
+            let validatorTypes = Object.keys(ValidatorMessages);
+            for(let i = 0; i < validatorTypes.length; i++) {
+                let rule = validatorTypes[i];
+                if(messages[rule]) { 
+                    if(!Array.isArray(messages[rule])) throw new Error(``);
+                    if(messages[rule].length !== 2) throw new Error(``);
+                    continue;
+                }
+                messages[rule] = ValidatorMessages[rule];
+            }
+
             container.oninput = (event) => { 
-                let result = validateInput(event.target, messages);
+                let result = validateInput(event.target, messages, true);
                 result.errorCount = 1;
                 if(!result) return;
                 let input = result.input; delete result.input;
@@ -515,7 +528,7 @@ const Validator = (() => {
             }
 
             container.onchange = (event) => { 
-                let result = validateInput(event.target, messages);
+                let result = validateInput(event.target, messages, true);
                 result.errorCount = 1;
                 if(!result) return;
                 let input = result.input; delete result.input; 
@@ -530,7 +543,7 @@ const Validator = (() => {
 
                 for(let input of inputs) { 
                     if(input.value.length === 0 && !input.matches('[data-vld-required]')) continue;
-                    let result = validateInput(input, messages);
+                    let result = validateInput(input, messages, true);
                     result.errorCount = ++errorCount;
 
                     if(!result) continue;
