@@ -1,128 +1,65 @@
+const ValidatorMessages = {
+    required  : ["Requis!"                               ,            "Champ obligatoire complété."],
+    alpha     : ["Entrée invalide!"                      ,                         "Entrée valide."],
+    alphanum  : ["Entrée invalide!"                      ,                         "Entrée valide."],
+    specials  : ["Entrée invalide!"                      ,                         "Entrée valide."],
+    password  : ["Mot de passe invalide!"                ,                   "Mot de passe valide."],
+    email     : ["E-mail invalide!"                      ,                         "E-mail valide."],
+    number    : ["Numéro invalide!"                      ,                         "Numéro valide."],
+    tel       : ["Numéro de téléphone invalide!"         ,            "Numéro de téléphone valide."],
+    url       : ["URL invalide!"                         ,                            "URL valide."],
+    date      : ["Date invalide!"                        ,                           "Date valide."],
+    color     : ["Couleur invalide!"                     ,                        "Couleur valide."],
+    min       : ["Valeur inférieure au minimum!"         , "La valeur est dans la plage autorisée."],
+    max       : ["Valeur maximale dépassée!"             , "La valeur est dans la plage autorisée."],
+    step      : ["Valeur non valide."                    ,                        "Nombre accepté."],
+    minlength : ["Trop court!"                           ,            "Longueur minimale atteinte."],
+    maxlength : ["Trop long!"                            ,             "Dans la longueur maximale."],
+    startdate : ["Date inférieure au minimum!"           ,   "La date est dans la plage autorisée."],
+    enddate   : ["Date maximale dépassée!"               ,   "La date est dans la plage autorisée."],
+    pattern   : ["Format non correct!"                   ,                         "Format valide."],
+    equal     : ["Must be equal to other values!"        ,                      "Values are equal."],
+    different : ["Must differ from other values!"        ,           "Different from other values."],
+    greater   : ["Must be greater than other values!"    ,    "Value is greater than other values."],
+    lesser    : ["Must be lesser than other values!"     ,    "Value is smaller than other values."],
+    sum       : ["Somme invalide!"                       ,                          "Somme valide."]
+};
+
 const Validator = (() => {
-    const BIG_INT_REGEX           = /^[+-]?\d+n$/;
-    const REAL_NUMBERS_REGEX      = /^[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?$/; // Real numbers + optional sci notation
-    const FRACTION_NOTATION_REGEX = /^([+-]?)(\d+)\/(0*[1-9]\d*)$/;
-    const BINARY_REGEX            = /^[01]+$/;
-    const OCTAL_REGEX             = /^[0-7]+$/;
-    const HEXADECIMAL_REGEX       = /^[0-9ABCDF]+$/;
+    const BIGINT_REGEX = /^[\+-]?\d+n$/;
 
-    const months_days = [ 
-        0,
-        31, //Jan
-        28, //Feb
-        31, //Mar
-        30, //Apr
-        31, //May
-        30, //Jun
-        31, //Jul
-        31, //Aug
-        30, //Sep
-        31, //Oct
-        30, //Nov
-        31  //Dec
-    ];
+    const bindingsMap = new Map();
 
-    const color_formats = [
-        "NAMED",
-        "HEX",
-        "RGB",
-        "HSL",
-        "HWB",
-        "LAB",
-        "LCH",
-        "OKLAB",
-        "OKLCH",
-        "RELATIVE"
-    ];
-
-    const css_named_colors = [
-        "aliceblue", "antiquewhite", "aqua", "aquamarine", "azure",
-        "beige", "bisque", "black", "blanchedalmond", "blue",
-        "blueviolet", "brown", "burlywood", "cadetblue", "chartreuse",
-        "chocolate", "coral", "cornflowerblue", "cornsilk", "crimson",
-        "cyan", "darkblue", "darkcyan", "darkgoldenrod", "darkgray",
-        "darkgreen", "darkgrey", "darkkhaki", "darkmagenta", "darkolivegreen",
-        "darkorange", "darkorchid", "darkred", "darksalmon", "darkseagreen",
-        "darkslateblue", "darkslategray", "darkslategrey", "darkturquoise", "darkviolet",
-        "deeppink", "deepskyblue", "dimgray", "dimgrey", "dodgerblue",
-        "firebrick", "floralwhite", "forestgreen", "fuchsia", "gainsboro",
-        "ghostwhite", "gold", "goldenrod", "gray", "green",
-        "greenyellow", "grey", "honeydew", "hotpink", "indianred",
-        "indigo", "ivory", "khaki", "lavender", "lavenderblush",
-        "lawngreen", "lemonchiffon", "lightblue", "lightcoral", "lightcyan",
-        "lightgoldenrodyellow", "lightgray", "lightgreen", "lightgrey", "lightpink",
-        "lightsalmon", "lightseagreen", "lightskyblue", "lightslategray", "lightslategrey",
-        "lightsteelblue", "lightyellow", "lime", "limegreen", "linen",
-        "magenta", "maroon", "mediumaquamarine", "mediumblue", "mediumorchid",
-        "mediumpurple", "mediumseagreen", "mediumslateblue", "mediumspringgreen", "mediumturquoise",
-        "mediumvioletred", "midnightblue", "mintcream", "mistyrose", "moccasin",
-        "navajowhite", "navy", "oldlace", "olive", "olivedrab",
-        "orange", "orangered", "orchid", "palegoldenrod", "palegreen",
-        "paleturquoise", "palevioletred", "papayawhip", "peachpuff", "peru",
-        "pink", "plum", "powderblue", "purple", "rebeccapurple",
-        "red", "rosybrown", "royalblue", "saddlebrown", "salmon",
-        "sandybrown", "seagreen", "seashell", "sienna", "silver",
-        "skyblue", "slateblue", "slategray", "slategrey", "snow",
-        "springgreen", "steelblue", "tan", "teal", "thistle",
-        "tomato", "turquoise", "violet", "wheat", "white",
-        "whitesmoke", "yellow", "yellowgreen"
-    ];
-
-    const supported_types = [
-        "alpha",
-        "alphanum",
-        "specialchar",
-        "password",
-        "email",
-        "number",
-        "tel",
-        "url",
-        "date",
-        "color",
-        "select"
-    ];
-
-    const min_max_types = [
-        "number",
-        "range"
-    ];
-
-    const length_types = [
-        "alpha",
-        "alphanum",
-        "specialchar",
-        "password",
-        "email",
-        "tel",
-        "url"
-    ];
-
-    const isValidDate_format = (format) => {
-        const DATE_FORMAT_REGEX = /^((D{1,2}[^0-9a-zA-Z]?M{1,2}[^0-9a-zA-Z]?Y{1,})|(D{1,2}[^0-9a-zA-Z]?Y{1,}[^0-9a-zA-Z]?M{1,2})|(M{1,2}[^0-9a-zA-Z]?D{1,2}[^0-9a-zA-Z]?Y{1,})|(M{1,2}[^0-9a-zA-Z]?Y{1,}[^0-9a-zA-Z]?D{1,2})|(Y{1,}[^0-9a-zA-Z]?D{1,2}[^0-9a-zA-Z]?M{1,2})|(Y{1,}[^0-9a-zA-Z]?M{1,2}[^0-9a-zA-Z]?D{1,2}))$/;
-        return DATE_FORMAT_REGEX.test(format);
+    const isDateFormat = (format) => {
+        return new RegExp(`^(
+            (D{1,2}[^0-9a-zA-Z]?M{1,2}[^0-9a-zA-Z]?Y{1,}) |
+            (D{1,2}[^0-9a-zA-Z]?Y{1,}[^0-9a-zA-Z]?M{1,2}) |
+            (M{1,2}[^0-9a-zA-Z]?D{1,2}[^0-9a-zA-Z]?Y{1,}) |
+            (M{1,2}[^0-9a-zA-Z]?Y{1,}[^0-9a-zA-Z]?D{1,2}) |
+            (Y{1,}[^0-9a-zA-Z]?D{1,2}[^0-9a-zA-Z]?M{1,2}) |
+            (Y{1,}[^0-9a-zA-Z]?M{1,2}[^0-9a-zA-Z]?D{1,2})
+        )$`.replace(/\s+/g, '')).test(format);
     };
 
-    const extractDate = (dateString, format) => {
-        const FORMAT_PATTERN = format.toLowerCase()
-                .replace(/y+|m+|d+/gi, 
-                    match => {
-                        if (/y+/i.test(match)) return "(?<year>\\d{1,})";
-                        if (/m+/i.test(match)) return "(?<month>\\d{1,2})";
-                        if (/d+/i.test(match)) return "(?<day>\\d{1,2})";
-                    }
-        );
-        const DATE_VALIDATION_REGEX = new RegExp(`^${FORMAT_PATTERN}$`, "i");
-        const match = dateString.match(DATE_VALIDATION_REGEX);
-        if(!match) return false;
+    const extractDateComponents = (dateString, format) => {
+        const FORMAT_REGEX = format.toLowerCase().replace(/y+|m+|d+/gi, match => {
+            if (/y+/i.test(match)) return "(?<year>\\d{1,})";
+            if (/m+/i.test(match)) return "(?<month>\\d{1,2})";
+            if (/d+/i.test(match)) return "(?<day>\\d{1,2})";
+        });
+
+    const match = dateString.match(new RegExp(`^${FORMAT_REGEX}$`, "i"));
+        if(!match) return null;
         return { 
-            year: parseInt(match.groups.year, 10),
-            month: parseInt(match.groups.month, 10),
-            day: parseInt(match.groups.day, 10)
+            year  : parseInt(match.groups.year , 10),
+            month : parseInt(match.groups.month, 10),
+            day   : parseInt(match.groups.day  , 10)
         };
     };
 
+    
     return {
-        isEmpty: (value) => {
+        isEmpty: function(value) {
             if(Array.isArray(value) || typeof value === "string")
                 return value.length === 0;
 
@@ -135,183 +72,87 @@ const Validator = (() => {
             return value === null || value === undefined;
         },
 
-        REAL    : "R",
-        RATIONAL: "Q",
-        INTEGER : "Z",
-        WHOLE   : "W",
-        NATURAL : "N",
-
-        isNumber: (value, set = Validator.REAL) => {
-            set = set.toUpperCase();
-            if(!["R", "Q", "Z", "W", "N"].includes(set)) set = "R";
-            
-            if(typeof value !== "string" && typeof value !== "number") return false;
-            
-            if(REAL_NUMBERS_REGEX.test(value.toString())) {
-                if(set === "R" || set === "Q") return true; // Includes all real numbers, allowing approximate representations of irrational numbers (Math.PI, Math.E ...)
-                value = Number(value);
-                if(set === "Z") return Number.isInteger(value);
-                if(set === "W") return Number.isInteger(value) && value >= 0;
-                if(set === "N") return Number.isInteger(value) && value > 0;
-            } 
-            else if(FRACTION_NOTATION_REGEX.test(value.toString())) {
-                if(set === "R" || set === "Q") return true;
-
-                let [full, sign, numerator, denominator] = value.toString().match(FRACTION_NOTATION_REGEX);
-                numerator   = Number(numerator);
-                denominator = Number(denominator);
-                const ratio = numerator / denominator;
-                if(set === "Z") return Number.isInteger(ratio);
-                if(set === "W" || set === "N") return Number.isInteger(ratio) && sign !== "-";
+        isInteger: function(value, signed) {
+            if (typeof value === 'bigint' || typeof value === 'number') { 
+                if(signed === false) return (Number.isInteger(value) && !isNaN(value)) && value >= 0;
+                return Number.isInteger(value) && !isNaN(value);
             }
-            
+
+            const INTEGER_REGEX = new RegExp(`^([\\+${signed ? '-' : ''}]?\\d+([eE]\\+?\\d+)?|[\\+-]?\\d+n)$`);
+            if (typeof value === 'string') return INTEGER_REGEX.test(value);
+
             return false;
         },
 
-        isBigInt: (value) => {
-            if(typeof value === "bigint") return true;
-            if(typeof value !== "string") return false;
-            if(BIG_INT_REGEX.test(value)) return true;
+        isNumber: function(value, signed) {
+            if (typeof value === 'bigint' || typeof value === 'number') { 
+                if(signed === false) return !isNaN(value) && value >= 0;
+                return !isNaN(value);
+            }
+
+            const NUMBER_REGEX = new RegExp(`^(([\\+${signed ? '-' : ''}]\\d\\.?|[\+${signed ? '-' : ''}]\\.\\d)?((\\d*(\\.\\d+)?)|(\\.d+))([eE][\\+-]?\\d+)?|[\\+-]?\\d+n)$`);
+            if (typeof value === 'string') return NUMBER_REGEX.test(value); 
+
             return false;
         },
 
-        isMultipleOf : (value, factor) => {
-            if(typeof value !== "string" && typeof value !== "number" && typeof value !== "bigint" &&
-                typeof factor !== "string" && typeof factor !== "number" && typeof factor !== "bigint"
-            ) throw new Error("Inputs must be valid numbers!");
-
-            if(typeof value !== "string")  value  = value.toString();
-            if(typeof factor !== "string") factor = factor.toString();
-
-            if(BIG_INT_REGEX.test(value) || BIG_INT_REGEX.test(factor)) {
-                if(!BIG_INT_REGEX.test(value) && !REAL_NUMBERS_REGEX.test(value) || !BIG_INT_REGEX.test(factor) && !REAL_NUMBERS_REGEX.test(factor)) 
-                    throw new Error("Inputs must be valid numbers!");
-
-                value  = BigInt(value.replace(/n$/, ""));
-                factor = BigInt(factor.replace(/n$/, ""));
-
-            }
-            else if(REAL_NUMBERS_REGEX.test(value) && REAL_NUMBERS_REGEX.test(factor)) {
-                value  = Number(value);
-                factor = Number(factor);
-            }
-            else throw new Error("Inputs must be valid numbers!");
-            
-            return (value % factor) === 0;
+        isMultipleOf: function (value, factor) {
+            if(!this.isNumber(value) || !this.isNumber(factor)) throw new Error('Value and factor arguments must be numerical values.');
+            if(BIGINT_REGEX.test(value) || BIGINT_REGEX.test(factor)) return BigInt(value) % BigInt(factor) === 0;
+            return (Number(value) % Number(factor)) === 0;
         },
 
-        isBinary: (value) => {
+        isBinary: function(value) {
             if(typeof value !== "string" && typeof value !== "number") return false;
 
             value = value.toString().toLowerCase();
-            if(value.startsWith("0b")) value = value.slice(2);
+            const BINARY_REGEX = /^[01]+$/;
 
+            if(value.startsWith('0b')) value = value.slice(2);
             return BINARY_REGEX.test(value) && value.includes("1");
         },
 
-        isOctal: (value) => {
+        isOctal: function(value) {
             if(typeof value !== "string" && typeof value !== "number") return false;
 
             value = value.toString().toLowerCase();
-            if(value.startsWith("0o")) value = value.slice(2);
+            const OCTAL_REGEX = /^[0-7]+$/;
 
+            if(value.startsWith("0o")) value = value.slice(2);
             return OCTAL_REGEX.test(value) && parseInt(value, 8) > 0;
         },
 
-        isHex: (value) => {
+        isHex: function(value) {
             if(typeof value !== "string" && typeof value !== "number") return false;
 
             value = value.toString().toUpperCase();
+            const HEXADECIMAL_REGEX = /^[0-9ABCDF]+$/;
+
             if(value.startsWith("0X")) value = value.slice(2);
             else if(value.startsWith("#")) value = value.slice(1);
-
             return HEXADECIMAL_REGEX.test(value) && parseInt(value, 16) > 0;
         },
 
-        isAtLeast: (value, min) => {
-            if(typeof value !== "string" && typeof value !== "number" && typeof value !== "bigint" &&
-                typeof min !== "string" && typeof min !== "number" && typeof min !== "bigint"
-            ) throw new Error("Inputs must be valid numbers!");
-
-            if(typeof value !== "string") value = value.toString();
-            if(typeof min !== "string")   min   = min.toString();
-
-            if(BIG_INT_REGEX.test(value) || BIG_INT_REGEX.test(min)) {
-                if(!BIG_INT_REGEX.test(value) && !REAL_NUMBERS_REGEX.test(value) || !BIG_INT_REGEX.test(min) && !REAL_NUMBERS_REGEX.test(min)) 
-                    throw new Error("Inputs must be valid numbers!");
-
-                value = BigInt(value.replace(/n$/, ""));
-                min   = BigInt(min.replace(/n$/, ""));
-            }
-            else if(REAL_NUMBERS_REGEX.test(value) && REAL_NUMBERS_REGEX.test(min)) {
-                value = Number(value);
-                min   = Number(min);
-            }
-            else throw new Error("Inputs must be valid numbers!");
-
-            return value >= min;
+        isAtLeast: function(value, min) {
+            if(!this.isNumber(value) || !this.isNumber(min)) throw new Error('Min argument must be type of number or bigint.');
+            if(BIGINT_REGEX.test(value) || BIGINT_REGEX.test(min) || typeof value === 'bigint' || typeof min === 'bigint') 
+                return BigInt(value.toString().replace(/[nN]/, '')) >= BigInt(min.toString().replace(/[nN]/, ''));
+            return Number(value) >= Number(min);
         },
 
-        isAtMost: (value, max) => {
-            if(typeof value !== "string" && typeof value !== "number" && typeof value !== "bigint" &&
-                typeof max !== "string" && typeof max !== "number" && typeof max !== "bigint"
-            ) throw new Error("Inputs must be valid numbers!");
-
-            if(typeof value !== "string") value = value.toString();
-            if(typeof max !== "string")   max   = max.toString();
-
-            if(BIG_INT_REGEX.test(value) || BIG_INT_REGEX.test(max)) {
-                if(!BIG_INT_REGEX.test(value) && !REAL_NUMBERS_REGEX.test(value) || !BIG_INT_REGEX.test(max) && !REAL_NUMBERS_REGEX.test(max))
-                    throw new Error("Inputs must be valid numbers!");
-
-                value = BigInt(value.replace(/n$/, ""));
-                max   = BigInt(max.replace(/n$/, ""));
-            }
-            else if(REAL_NUMBERS_REGEX.test(value) && REAL_NUMBERS_REGEX.test(max)) {
-                value = Number(value);
-                max   = Number(max);
-            }
-            else throw new Error("Inputs must be valid numbers!");
-
-            return value <= max;
+        isAtMost: function(value, max) {
+            if(!this.isNumber(value) || !this.isNumber(max)) throw new Error('Max argument must be type of number or bigint.');
+            if(BIGINT_REGEX.test(value) || BIGINT_REGEX.test(max) || typeof value === 'bigint' || typeof max === 'bigint') 
+                return BigInt(value.toString().replace(/[nN]/, '')) <= BigInt(max.toString().replace(/[nN]/, ''));
+            return Number(value) <= Number(max);
         },
 
-        isInRange: (value, min, max) => {
-            if(typeof value !== "string" && typeof value !== "number" && typeof value !== "bigint" &&
-                typeof min !== "string" && typeof min !== "number" && typeof min !== "bigint" &&
-                typeof max !== "string" && typeof max !== "number" && typeof max !== "bigint"
-            ) throw new Error("Inputs must be valid numbers!");
-
-            if(typeof value !== "string") value = value.toString();
-            if(typeof min !== "string")   min   = min.toString();
-            if(typeof max !== "string")   max   = max.toString();
-
-            if(BIG_INT_REGEX.test(value) || BIG_INT_REGEX.test(min) || BIG_INT_REGEX.test(max)) {
-                if(!BIG_INT_REGEX.test(value) && !REAL_NUMBERS_REGEX.test(value) || 
-                    !BIG_INT_REGEX.test(min) && !REAL_NUMBERS_REGEX.test(min) ||
-                    !BIG_INT_REGEX.test(max) && !REAL_NUMBERS_REGEX.test(max)
-                ) throw new Error("Inputs must be valid numbers!");
-
-                value = BigInt(value.replace(/n$/, ""));
-                min   = BigInt(min.replace(/n$/, ""));
-                max   = BigInt(max.replace(/n$/, ""));
-            }
-            else if(REAL_NUMBERS_REGEX.test(value) && REAL_NUMBERS_REGEX.test(min) && REAL_NUMBERS_REGEX.test(max)) {
-                value = Number(value);
-                min   = Number(min);
-                max   = Number(max);
-            }
-            else throw new Error("Inputs must be valid numbers!");
-
-            return value >= min && value <= max;
-        },
-
-        isEmail: (value) => {
+        isEmail: function(value) {
             if(typeof value !== "string") return false;
-            return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(value);
+            return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(value); // Basic email address regex.
         },
 
-        isPassword: (value, minlength = 1, maxlength = 64, regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9])\S+$/) => {
+        isPassword: function(value, minlength = 1, maxlength = 64, regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9])\S+$/) {
             minlength = Number(minlength);
             maxlength = Number(maxlength);
 
@@ -321,36 +162,35 @@ const Validator = (() => {
             return regex.test(value) && value.length >= minlength && value.length <= maxlength;
         },
 
-        isAlpha: (value) => {
+        isAlpha: function(value) {
             if(typeof value !== "string") return false;
-            return /^\p{L}+(?: \p{L}+)*$/u.test(value);
+            return /^\p{L}+$/u.test(value);
         },
 
-        isAlphanum: (value) => {
+        isAlphanum: function(value) {
             if(typeof value !== "string") return false;
             return /^[\p{L}\p{N}]+$/u.test(value);
         },
 
-        isSpecialChar: (value) => {
+        isSpecials: function(value) {
             if(typeof value !== "string") return false;
-            return /^[^a-zA-Z0-9\s]+$/.test(value);
+            return /^[^a-zA-Z0-9]+$/.test(value);
         },
 
-        hasSpecialChar: (value) => {
+        hasSpecials: function(value) {
             if(typeof value !== "string") return false;
-            return /[^a-zA-Z0-9\s]/.test(value);
+            return /^[^\p{L}\p{N}]+$/u.test(value);
         },
 
-        isTel: (value, format = 'SSSSSSSSSS') => {
-            if (typeof format !== 'string') throw new Error('Format argument must be a string'); 
-            if (typeof value !== 'string') return false;
+        isTel: function(value, format = 'SSSSSSSSSS') {
+            if (typeof format !== 'string') throw new Error('Format argument must be type of string.'); 
+            if (typeof value  !== 'string') return false;
 
             // syntax ->  + C{1,3} N{1,5} S{1,10} alphanum E{1,5}    
             let FORMAT_REGEX = /^((\+)?([^a-zA-Z0-9]*)(C{0,3}))?([^a-zA-Z0-9]*)(N{0,5})?([^a-zA-Z0-9]*)(S{1,10})([^a-zA-Z0-9]*)(([a-z]|[^a-zA-Z0-9])*(E{1,5}))?$/;
             if (!FORMAT_REGEX.test(format)) throw new Error('Invalid format!');
         
-            let pattern = '',
-                i = 0;
+            let pattern = '', i = 0;
             while (i < format.length) {
                 if (['C', 'N', 'S', 'E'].includes(format[i])) {
                     const placeholder = format[i];
@@ -375,35 +215,35 @@ const Validator = (() => {
             return new RegExp('^' + pattern + '$').test(value);
         },
 
-        isURL: (value, options) => {
-            let genDelims = `[:\\/\\?\\#\\[\\]\\@]`;
-            let subDelims = `[\\*\\+,;=]`;
-            let reserved = `(${genDelims}|${subDelims})`;
-            let unreserved = `([a-zA-Z0-9\\-\\.\\_\\~])`;
-            let pctEncoded = `%[0-9a-fA-F]{2}`;
+        isURL: function(value, options) {
+            let genDelims      = `[:\\/\\?\\#\\[\\]\\@]`;
+            let subDelims      = `[\\*\\+,;=]`;
+            let reserved       = `(${genDelims}|${subDelims})`;
+            let unreserved     = `([a-zA-Z0-9\\-\\.\\_\\~])`;
+            let pctEncoded     = `%[0-9a-fA-F]{2}`;
         
-            let pchar = `(${unreserved}|${pctEncoded}|${subDelims}|[:@])`;
-            let fragment = `(${pchar}|[\\/\\?])*`;
-            let query = `(${pchar}|[\\/\\?])*`;
+            let pchar          = `(${unreserved}|${pctEncoded}|${subDelims}|[:@])`;
+            let fragment       = `(${pchar}|[\\/\\?])*`;
+            let query          = `(${pchar}|[\\/\\?])*`;
         
-            let segmentNZNC = `(${unreserved}|${pctEncoded}|${subDelims}|@)+`;
-            let segmentNZ = `${pchar}+`;
-            let segment = `${pchar}*`;
+            let segmentNZNC    = `(${unreserved}|${pctEncoded}|${subDelims}|@)+`;
+            let segmentNZ      = `${pchar}+`;
+            let segment        = `${pchar}*`;
         
-            let pathEmpty = ``;
-            let pathRootless = `${segmentNZ}(\\/${segment})*`;
-            let pathNoscheme = `${segmentNZNC}(\\/${segment})*`;
-            let pathAbsolute = `\\/((${segmentNZ}(\\/${segment})*)?)`;
-            let pathAbempty = `(\\/${segment})*`;
-            let path = `(${pathAbempty}|${pathAbsolute}|${pathNoscheme}|${pathRootless}|${pathEmpty})`;
+            let pathEmpty      = ``;
+            let pathRootless   = `${segmentNZ}(\\/${segment})*`;
+            let pathNoscheme   = `${segmentNZNC}(\\/${segment})*`;
+            let pathAbsolute   = `\\/((${segmentNZ}(\\/${segment})*)?)`;
+            let pathAbempty    = `(\\/${segment})*`;
+            let path           = `(${pathAbempty}|${pathAbsolute}|${pathNoscheme}|${pathRootless}|${pathEmpty})`;
         
-            let regName = `(${unreserved}|${pctEncoded}|${subDelims})*`;
-            let decOctet = `([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])`;
-            let ipv4Adress = `${decOctet}\\.${decOctet}\\.${decOctet}\\.${decOctet}`;
-            let h16 = `[0-9a-fA-F]{1,4}`;
-            let ls32 = `((${h16}:${h16})|${ipv4Adress})`;
+            let regName        = `(${unreserved}|${pctEncoded}|${subDelims})*`;
+            let decOctet       = `([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])`;
+            let ipv4Adress     = `${decOctet}\\.${decOctet}\\.${decOctet}\\.${decOctet}`;
+            let h16            = `[0-9a-fA-F]{1,4}`;
+            let ls32           = `((${h16}:${h16})|${ipv4Adress})`;
         
-            let ipv6Address = `(
+            let ipv6Address    = `(
                 (${h16}:){6}${ls32} |
                 ::((${h16}:){5}${ls32})? |
                 (${h16})?::(${h16}:){4}${ls32} |
@@ -415,629 +255,294 @@ const Validator = (() => {
                 ((${h16}:){0,6}${h16})?::
             )`.replace(/\s+/g, ''); // Remove unnecessary whitespace
         
-            let ipvFuture = `v[0-9a-fA-F]+\\.(${unreserved}|${subDelims}|:)+`;
-            let ipLiteral = `\\[(${ipv6Address}|${ipvFuture})\\]`;
-            let port = `[0-9]*`;
-            let host = `(${ipLiteral}|${ipv4Adress}|${regName})`;
-            let userInfo = `(${unreserved}|${pctEncoded}|${subDelims}|:)*`;
-            let authority = `(${userInfo}@)?${host}(:${port})?`;
-            let scheme = `[a-zA-Z]([a-zA-Z0-9\\+\\-\\.]*)`;
+            let ipvFuture      = `v[0-9a-fA-F]+\\.(${unreserved}|${subDelims}|:)+`;
+            let ipLiteral      = `\\[(${ipv6Address}|${ipvFuture})\\]`;
+            let port           = `[0-9]*`;
+            let host           = `(${ipLiteral}|${ipv4Adress}|${regName})`;
+            let userInfo       = `(${unreserved}|${pctEncoded}|${subDelims}|:)*`;
+            let authority      = `(${userInfo}@)?${host}(:${port})?`;
+            let scheme         = `[a-zA-Z]([a-zA-Z0-9\\+\\-\\.]*)`;
         
-            let relativePart = `(\\/\\/${authority}${pathAbempty}|${pathAbsolute}|${pathNoscheme}|${pathEmpty})`;
-            let hierPart = `(\\/\\/${authority}${pathAbempty}|${pathAbsolute}|${pathRootless}|${pathEmpty})`;
-            let relativeRef = `${relativePart}(\\?${query})?(#${fragment})?`;
-            let absoluteUri = `${scheme}:${hierPart}(\\?${query})?`;
-            let uri = `${scheme}:${hierPart}(\\?${query})?(#${fragment})?`;
-            let uriReference = `(${uri}|${relativeRef})`;
+            let relativePart   = `(\\/\\/${authority}${pathAbempty}|${pathAbsolute}|${pathNoscheme}|${pathEmpty})`;
+            let hierPart       = `(\\/\\/${authority}${pathAbempty}|${pathAbsolute}|${pathRootless}|${pathEmpty})`;
+            let relativeRef    = `${relativePart}(\\?${query})?(#${fragment})?`;
+            let absoluteUri    = `${scheme}:${hierPart}(\\?${query})?`;
+            let uri            = `${scheme}:${hierPart}(\\?${query})?(#${fragment})?`;
+            let uriReference   = `(${uri}|${relativeRef})`;
         
             let isPath         = new RegExp('^' + path         + '$', 'g').test(value);
             let isRelativeRef  = new RegExp('^' + relativeRef  + '$', 'g').test(value);
             let isAbsoluteUri  = new RegExp('^' + absoluteUri  + '$', 'g').test(value);
             let isUriReference = new RegExp('^' + uriReference + '$', 'g').test(value);
+
             return isUriReference;
         },
 
-        isDate: (value, format = "DD/MM/YYYY") => {
+        isDate: function(value, format = "DD/MM/YYYY") {
             if(value instanceof Date) return !Number.isNaN(value.getTime());
+            if(!isDateFormat(format)) throw new Error("Format argument must be string with correct date placeholder formatting eg 'DD/MM/YYYY'");
+            if(typeof value !== 'string') return false;
 
-            if(!isValidDate_format(format)) throw new Error("Invalid format!");
+            let dateComponents = extractDateComponents(value, format);
+            if(dateComponents === null) return false;
 
-            const dateObject = extractDate(value, format);
-
-            if(!dateObject) return false;
-
-            months_days[2] = ((dateObject.year % 4 === 0 && dateObject.year % 100 !== 0) || dateObject.year % 400 === 0) ? 28 : 29;
-
-            if(dateObject.day > months_days[dateObject.month] ||
-                dateObject.day < 1 || dateObject.month > 12 || dateObject.month < 1 ||
-                dateObject.year === 0) return false;
-
+            const {day, month, year} = dateComponents;
+            if(!day && !month && !year) return false;
+            const monthsDays = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]; /* Jan, Feb, Mars, ... Dec */
+            monthsDays[2] = ((year % 4 === 0 && year % 100 !== 0) || year % 400 === 0) ? 29 : 28; // Adjust month days
+            if(day > monthsDays[month] || day < 1 || month > 12 || month < 1 || year === 0) return false; // when date is nonsense
             return true;
         },
 
-        isDateAtLeast: (value, min, format = "DD/MM/YYYY") => {
-            if(value instanceof Date) value = value.getTime();
+        isDateAtLeast: function(value, min, format = "DD/MM/YYYY") {
+            if(!isDateFormat(format)) throw new Error("Format argument must be string with correct date placeholder formatting eg, 'DD/MM/YYYY'");
+            if(!(min   instanceof Date) && !this.isDate(min  , format)) throw new Error("Min argument must be either date object or string with given date format.");
+            if(!(value instanceof Date) && !this.isDate(value, format)) return false;
 
-            if(min instanceof Date) min = min.getTime();
+            if(value instanceof Date) {
+                value = value.getTime();
+            }
+            else {
+                const dateComponents = extractDateComponents(value, format);
+                value = new Date(dateComponents.year, dateComponents.month - 1, dateComponents.day).getTime();
+            }
 
-            if(Number.isNaN(value) || Number.isNaN(min)) throw new Error("Invalid dates!");
-
-            if(typeof value === "number" && typeof min === "number") return value >= min;
-
-            if(!isValidDate_format(format)) throw new Error("Invalid format!");
-
-            if(!Validator.isDate(value, format) || !Validator.isDate(min, format)) throw new Error("Invalid dates!");
-
-            const dateObject = extractDate(value, format), minDateObj = extractDate(min, format);
-
-            value = new Date(dateObject.year, dateObject.month - 1, dateObject.day).getTime();
-            min   = new Date(minDateObj.year, minDateObj.month - 1, minDateObj.day).getTime();
+            if(min instanceof Date) {
+                min = min.getTime();
+            }
+            else {
+                const dateComponents = extractDateComponents(min, format);
+                min = new Date(dateComponents.year, dateComponents.month - 1, dateComponents.day).getTime();
+            }
 
             return value >= min;
         },
 
-        isDateAtMost: (value, max, format = "DD/MM/YYYY") => {
-            if(value instanceof Date) value = value.getTime();
+        isDateAtMost: function(value, max, format = "DD/MM/YYYY") {
+            if(!isDateFormat(format)) throw new Error("Format argument must be string with correct date placeholder formatting eg, 'DD/MM/YYYY'.");
+            if(!(max   instanceof Date) && !this.isDate(max  , format)) throw new Error("Max argument must be either date object or string with given date format.");
+            if(!(value instanceof Date) && !this.isDate(value, format)) return false;
 
-            if(max instanceof Date) max = max.getTime();
+            if(value instanceof Date) {
+                value = value.getTime();
+            }
+            else {
+                const dateComponents = extractDateComponents(value, format);
+                value = new Date(dateComponents.year, dateComponents.month - 1, dateComponents.day).getTime();
+            }
 
-            if(Number.isNaN(value) || Number.isNaN(max)) throw new Error("Invalid dates!");
-
-            if(typeof value === "number" && typeof max === "number") return value <= max;
-
-            if(!isValidDate_format(format)) throw new Error("Invalid format!");
-
-            if(!Validator.isDate(value, format) || !Validator.isDate(max, format)) throw new Error("Invalid dates!");
-
-            const dateObject = extractDate(value, format), maxDateObj = extractDate(max, format);
-
-            value = new Date(dateObject.year, dateObject.month - 1, dateObject.day).getTime();
-            max   = new Date(maxDateObj.year, maxDateObj.month - 1, maxDateObj.day).getTime();
+            if(max instanceof Date) {
+                max = min.getTime();
+            }
+            else {
+                const dateComponents = extractDateComponents(max, format);
+                max = new Date(dateComponents.year, dateComponents.month - 1, dateComponents.day).getTime();
+            }
 
             return value <= max;
         },
 
-        isDateInRange: (value, min, max, format = "DD/MM/YYYY") => {
-            if(value instanceof Date) value = value.getTime();
-
-            if(min instanceof Date) min = min.getTime();
-
-            if(max instanceof Date) max = max.getTime();
-
-            if(Number.isNaN(value) || Number.isNaN(min) || Number.isNaN(max)) throw new Error("Invalid dates!");
-
-            if(typeof value === "number" && typeof min === "number" && typeof max === "number") return value >= min && value <= max;
-
-            if(!isValidDate_format(format)) throw new Error("Invalid format!");
-
-            if(!Validator.isDate(value, format) || !Validator.isDate(min, format) || !Validator.isDate(max, format))
-                throw new Error("Invalid dates!");
-
-            const dateObject = extractDate(value, format), minDateObj = extractDate(min, format), maxDateObj = extractDate(max, format);
-
-            value = new Date(dateObject.year, dateObject.month - 1, dateObject.day).getTime();
-            min   = new Date(minDateObj.year, minDateObj.month - 1, minDateObj.day).getTime();
-            max   = new Date(maxDateObj.year, maxDateObj.month - 1, maxDateObj.day).getTime();
-
-            return value >= min && value <= max;
-        },
-
-        NAMED    : "NAMED",
-        HEX      : "HEX",
-        RGB      : "RGB",
-        HSL      : "HSL",
-        HWB      : "HWB",
-        LAB      : "LAB",
-        LCH      : "LCH",
-        OKLAB    : "OKLAB",
-        OKLCH    : "OKLCH",
-        RELATIVE : "RELATIVE",
-
-        isColorNamed: (value) => {
+        isColorNamed: function(value) {
             if(typeof value !== "string") return false;
-            return css_named_colors.includes(value);
+            let style = new Option().style;
+            style.color = value;
+            return style.color !== '';
         },
 
-        isColorHex: (value) => {
+        isColorHex: function(value) {
             if(typeof value !== "string") return false;
             return /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(value);
         },
 
-        validate: (inputGroup, callback, messages = Validator.messages) => {
-            if(!(inputGroup instanceof HTMLElement)) throw new Error("Feed valid input group!");
+        validateInput: function(element, messages = ValidatorMessages) {
+            if(!element.matches(`input[data-vld-type], select[data-vld-type], textarea[data-vld-type]`)) return;
 
-            if(inputGroup.matches("form")) inputGroup.setAttribute("novalidate", "");
+            let input     = element;
+            let value     = input.value;
+            let rule      = input.dataset.vldType.trim().toLowerCase();
+            let format    = input.dataset.vldFormat;
+            let required  = input.dataset.vldRequired;
+            let minlength = input.dataset.vldMinlength;
+            let maxlength = input.dataset.vldMaxlength;
+            let min       = input.dataset.vldMin;
+            let max       = input.dataset.vldMax;
+            let step      = input.dataset.vldStep;
+            let startDate = input.dataset.vldStartdate;
+            let endDate   = input.dataset.vldEnddate;
+            let pattern   = input.dataset.vldPattern;
+            let isValid   = true;
 
-            let dependencies = inputGroup.hasAttribute("data-dependencies") ? inputGroup.getAttribute("data-dependencies") : null;
-
-            inputGroup.querySelectorAll("[data-dependencies]").forEach(element => dependencies += element.hasAttribute("data-dependencies") ? element.getAttribute("data-dependencies") : "");
-
-            if(dependencies) {
-                dependencies = [...dependencies.matchAll(/(order|sum|unique)\(\s*([^)]+?)\s*\)/gi)];
-
-                dependencies.forEach((dependency, index) => {
-                    const type = dependency[1];
-                    const args = dependency[2].split(/\s*,\s*/);
-
-                    if(args.length < 2) throw new Error("Dependencies require at least 2 arguments each!");
-
-                    if(type === "sum") {
-                        const target = document.getElementById(args[0].replace("#", ""));
-                        if(!target) throw new Error("Invalid target id!");
-                        target.setAttribute("data-dependency", "sum");
-                        target.readOnly = true;
-
-                        for(let i = 1; i < args.length; i++) {
-                            const benefactor = document.getElementById(args[i].replace("#", ""));
-                            if(!benefactor) throw new Error("Invalid benefactor id!");
-                            benefactor.setAttribute(`data-benefactor-${index + 1}`, target.id);
-                        }
-                    }
-
-                    if(type === "unique") {
-                        for(let i = 0; i < args.length; i++) {
-                            const benefactor = document.getElementById(args[i].replace("#", ""));
-                            if(!benefactor) throw new Error("Invalid benefactor id!");
-                            benefactor.setAttribute(`data-unique-${index + 1}`, `set${index + 1}`);
-                        }
-                    }
-
-                    if(type === "order") {
-                        for(let i = 0; i < args.length; i++) {
-                            const sequential = document.getElementById(args[i].replace("#", ""));
-                            if(!sequential) throw new Error("Invalid sequential id!");
-                            sequential.setAttribute(`data-sequential-${index + 1}`, `set${index + 1}`);
-                        }
-                    }
-                });
+            let validatorTypes = Object.keys(ValidatorMessages);
+            for(let i = 0; i < validatorTypes.length; i++) {
+                let rule = validatorTypes[i];
+                if(messages[rule]) continue;
+                messages[rule] = ValidatorMessages[rule];
             }
-            
-            let invalidInputsCount = 0;
-            const validated        = new Set();
 
-            inputGroup.addEventListener("input", (event) => {
-                const input = event.target;
-                
-                if(input.matches("input") && input.hasAttribute("data-validate")) inputValidation(input, messages);
+            if(!pattern && input.dataset.hasOwnProperty('vldErrmessage')) 
+                throw new Error(``);
+            if(!pattern && input.dataset.hasOwnProperty('vldMessage')) 
+                throw new Error(``);
+            if(rule === 'number' && (!Validator.isEmpty(minlength) || !Validator.isEmpty(maxlength))) 
+                throw new Error(`Type attribute value 'number' must not be used with maxlength or minlength attributes.`);
+            if(rule !== 'number' && (!Validator.isEmpty(min) || !Validator.isEmpty(max))) 
+                throw new Error(`Type attribute value '${rule}' must not be used with max or min attributes.`);
+            if(rule !== 'number' &&  !Validator.isEmpty(step)) 
+                throw new Error(`Step attribute value must not be used along side '${rule}' validation attribute.`);
+            if(rule !== 'date'   && (!Validator.isEmpty(startDate) || !Validator.isEmpty(endDate))) 
+                throw new Error(`Type attribute value '${rule}' must not be used alongside startdate or enddate data attributes.`);
+            if(!ValidatorMessages.hasOwnProperty(rule) && !Validator.isEmpty(rule)) 
+                throw new Error('Unknown type attribute value was given.');
 
-                validated.clear();
-            });
 
-            inputGroup.addEventListener("change", (event) => {
-                const input = event.target;
-                
-                if(input.matches("select") && input.hasAttribute("data-validate")) inputValidation(input, messages);
+            if(!bindingsMap.has(input)) {
+                const bindAttrRegex = /vldBind(\d+)/;
+                for(let propName of Object.keys(input.dataset)) {
+                    const index        = propName.match(bindAttrRegex)[1];
+                    const hasBind      = bindAttrRegex.test(propName);
+                    const hasOperation = input.dataset.hasOwnProperty('vldOperation' + index);
 
-                validated.clear();
-            });
+                    if(!hasBind     && !hasOperation) continue;
+                    if(hasBind      && !hasOperation) throw new Error(``);
+                    if(hasOperation && !hasBind)      throw new Error(``);
 
-            inputGroup.addEventListener("submit", (event) => {
-                invalidInputsCount = 0;
-
-                const inputs = inputGroup.querySelectorAll("input[data-validate], select[data-validate]");
-                for(const input of inputs) inputValidation(input, messages);
-
-                validated.clear();
-
-                if(invalidInputsCount !== 0) event.preventDefault();
-            });
-
-            function inputValidation(input, messages) {
-                const value      = input.value.trim();
-                const required   = input.required;
-                let   type       = (supported_types.includes(input.type)) ? input.type                            : "text";
-                const min        = input.hasAttribute("min")              ? input.getAttribute("min")             : null;
-                const max        = input.hasAttribute("max")              ? input.getAttribute("max")             : null;
-                const step       = input.hasAttribute("step")             ? input.getAttribute("step")            : "any";
-                const minlength  = input.hasAttribute("minlength")        ? input.getAttribute("minlength")       : null;
-                const maxlength  = input.hasAttribute("maxlength")        ? input.getAttribute("maxlength")       : null;
-                const pattern    = input.hasAttribute("pattern")          ? input.getAttribute("pattern")         : null;
-                const format     = input.hasAttribute("data-format")      ? input.getAttribute("data-format")     : undefined;
-
-                const benefactor = [];
-                const dependency = [];
-                const unique     = [];
-                const order      = [];
-
-                for(const key in input.dataset) {
-                    if(key.startsWith("benefactor-")) benefactor.push({ key: key, id: input.dataset[key] });
-                    if(key.startsWith("dependency-")) dependency.push({ key: key, id: input.dataset[key] });
-                    if(key.startsWith("unique-")) unique.push({ key : key, set: input.dataset[key] });
-                    if(key.startsWith("sequential-")) order.push({ key : key, set : input.dataset[key] });
+                    let operation = input.dataset['vldOperation' + index].trim().toLowerCase();
+                    let targets   = input.dataset['vldBind' + index].replace(/\s+/g, '').split(',').map(id => document.querySelector(id));
+                    bindingsMap.set(input, {operation, targets});
                 }
-
-                const validation_type = input.getAttribute("data-validate");
-                if(validation_type.length > 0 && supported_types.includes(validation_type)) type = validation_type;
-
-                const custom_error_message   = input.hasAttribute("data-message-error")   ? input.getAttribute("data-message-error")   : null;
-                const custom_success_message = input.hasAttribute("data-message-success") ? input.getAttribute("data-message-success") : null;
-
-                const result = {
-                    message: null,
-                    valid  : false
-                };
-
-                if(required) {
-                    if(Validator.isEmpty(value)) {
-                        result.message = messages.required[0];
-                        invalidInputsCount++;
-                        return callback(input, result);
-                    }
-
-                    result.message = messages.required[1];
-                }
-
-                if(type === "alpha" && value.length > 0) {
-                    if(!Validator.isAlpha(value)) {
-                        result.message = (custom_error_message) ? custom_error_message : messages.alpha[0];
-                        invalidInputsCount++;
-                        return callback(input, result);
-                    }
-
-                    result.message = (custom_success_message) ? custom_success_message : messages.alpha[1];
-                }
-
-                if(type === "alphanum" && value.length > 0) {
-                    if(!Validator.isAlphanum(value)) {
-                        result.message = (custom_error_message) ? custom_error_message : messages.alphanum[0];
-                        invalidInputsCount++;
-                        return callback(input, result);
-                    }
-
-                    result.message = (custom_success_message) ? custom_success_message : messages.alphanum[1];
-                }
-
-                if(type === "specialchar" && value.length > 0) {
-                    if(!Validator.isSpecialChar(value)) {
-                        result.message = (custom_error_message) ? custom_error_message : messages.specialchar[0];
-                        invalidInputsCount++;
-                        return callback(input, result);
-                    }
-
-                    result.message = (custom_success_message) ? custom_success_message : messages.specialchar[1];
-                }
-
-                if(type === "password" && value.length > 0) {
-                    let regex = undefined;
-
-                    if(pattern) regex = new RegExp(`^${pattern}$`);
-
-                    if(!Validator.isPassword(value, undefined, undefined, regex)) {
-                        result.message = (custom_error_message) ? custom_error_message : messages.password[0];
-                        invalidInputsCount++;
-                        return callback(input, result);
-                    }
-
-                    result.message = (custom_success_message) ? custom_success_message : messages.password[1];
-                }
-
-                if(type === "email" && value.length > 0) {
-                    if(!Validator.isEmail(value)) {
-                        result.message = (custom_error_message) ? custom_error_message : messages.email[0];
-                        invalidInputsCount++;
-                        return callback(input, result);
-                    }
-
-                    result.message = (custom_success_message) ? custom_success_message : messages.email[1];
-                }
-
-                if(type === "number" && value.length > 0) {
-                    let set = Validator.REAL;
-
-                    if(!Validator.isNumber(step) && step !== "any") throw new Error("Invalid step value!");
-
-                    if(!Validator.isNumber(value, set)) {
-                        result.message = (custom_error_message) ? custom_error_message : messages.number[0];
-                        invalidInputsCount++;
-                        return callback(input, result);
-                    }
-
-                    if(Validator.isNumber(step) && !Validator.isMultipleOf(value, step)) {
-                        result.message = (custom_error_message) ? custom_error_message : messages.number[0];
-                        invalidInputsCount++;
-                        return callback(input, result);
-                    }
-
-                    result.message = (custom_success_message) ? custom_success_message : messages.number[1];
-                }
-
-                if(type === "tel" && value.length > 0) {
-                    if(!Validator.isTel(value, format)) {
-                        result.message = (custom_error_message) ? custom_error_message : messages.tel[0];
-                        invalidInputsCount++;
-                        return callback(input, result);
-                    }
-
-                    result.message = (custom_success_message) ? custom_success_message : messages.tel[1];
-                }
-
-                if(type === "url" && value.length > 0) {
-                    if(!Validator.isURL(value)) {
-                        result.message = (custom_error_message) ? custom_error_message : messages.url[0];
-                        invalidInputsCount++;
-                        return callback(input, result);
-                    }
-
-                    result.message = (custom_success_message) ? custom_success_message : messages.url[1];
-                }
-
-                if(type === "date" && value.length > 0) {
-                    if(!Validator.isDate(value, format)) {
-                        result.message = (custom_error_message) ? custom_error_message : messages.date[0];
-                        invalidInputsCount++;
-                        return callback(input, result);
-                    }
-
-                    result.message = (custom_success_message) ? custom_success_message : messages.date[1];
-
-                    if(min && Validator.isDate(min, date_format) && !Validator.isDateAtLeast(value, min, date_format)) {
-                        result.message = messages.min[0];
-                        invalidInputsCount++;
-                        return callback(input, result);
-                    } else result.message = messages.min[1];
-
-                    if(max && Validator.isDate(max, date_format) && !Validator.isDateAtMost(value, max, date_format)) {
-                        result.message = messages.max[0];
-                        invalidInputsCount++;
-                        return callback(input, result);
-                    } else result.message =  messages.max[1];
-                }
-
-                if(type === "color") {
-                    if(!Validator.isColor(value, format)) {
-                        result.message = (custom_error_message) ? custom_error_message : messages.color[0];
-                        invalidInputsCount++;
-                        return callback(input, result);
-                    }
-
-                    result.message = (custom_success_message) ? custom_success_message : messages.color[1];
-                }
-
-                if(min && value.length > 0 && min_max_types.includes(type)) {
-                    if(!Validator.isAtLeast(value, min)) {
-                        result.message = messages.min[0];
-                        invalidInputsCount++;
-                        return callback(input, result);
-                    }
-
-                    result.message = messages.min[1];
-                }
-
-                if(max && value.length > 0 && min_max_types.includes(type)) {
-                    if(!Validator.isAtMost(value, max)) {
-                        result.message = messages.max[0];
-                        invalidInputsCount++;
-                        return callback(input, result);
-                    }
-
-                    result.message = messages.max[1];
-                }
-
-                if(minlength && value.length > 0 && length_types.includes(type)) {
-                    if(!Validator.isAtLeast(value.length, minlength)) {
-                        result.message = messages.minlength[0];
-                        invalidInputsCount++;
-                        return callback(input, result);
-                    }
-
-                    result.message = messages.minlength[1];
-                }
-
-                if(maxlength && value.length > 0 && length_types.includes(type)) {
-                    if(!Validator.isAtMost(value.length, maxlength)) {
-                        result.message = messages.maxlength[0];
-                        invalidInputsCount++;
-                        return callback(input, result);
-                    }
-
-                    result.message = messages.maxlength[1];
-                }
-
-                if(pattern && value.length > 0) {
-                    regex = new RegExp(`^${pattern}$`);
-                    
-                    if(!regex.test(value)) {
-                        result.message = messages.pattern[0];
-                        invalidInputsCount++;
-                        return callback(input, result);
-                    }
-
-                    result.message = messages.pattern[1];
-                }
-
-                if(benefactor.length > 0 && value.length > 0) {
-                    for(const b of benefactor) {
-                        if(validated.has(b.key)) continue;
-
-                        const dependant = document.getElementById(b.id);
-                        if(!dependant) throw new Error("Invalid dependant id!");
-
-                        const benefactors = document.querySelectorAll(`[data-${b.key}="${b.id}"]`);
-                        let sum = 0;
-                        benefactors.forEach(input => sum += Validator.isNumber(input.value) ? Number(input.value) : 0);
-                        dependant.value = sum;
-
-                        validated.add(b.key);
-                    }
-
-                }
-
-                if(dependency.length > 0 && value.length > 0) {
-                    for(const d of dependency) {
-                        if(validated.has(d.key)) continue;
-
-                        const id = d.id;
-                        const benefactors = document.querySelectorAll(`[data-${d.key}="${id}"]`);
-                        let sum = 0;
-                        benefactors.forEach(input => sum += Validator.isNumber(input.value) ? Number(input.value) : 0);
-                        if(sum !== Number(value)) {
-                            result.message = messages.sum[0];
-                            invalidInputsCount++;
-                            return callback(input, result);
-                        }
-
-                        validated.add(d.key);
-                    }
-
-                    result.message = messages.sum[1];
-                }
-
-                if(unique.length > 0 && value.length > 0) {
-                    for(const u of unique) {
-                        if(validated.has(u.key)) continue;
-
-                        const set = document.querySelectorAll(`[data-${u.key}=${u.set}]`);
-                        for(const entry of set) {
-                            if(entry.value.length <= 0 || entry === input) continue;
-
-                            if(entry.value === value) {
-                                result.message = messages.unique[0];
-                                invalidInputsCount++;
-                                return callback(input, result);
-                            }
-
-                            result.message = messages.unique[1];
-                        }
-
-                        validated.add(u.key);
-                    }
-                }
-
-                if(order.length > 0 && value.length > 0) {
-                    for(const o of order) {
-                        if(validated.has(o.key)) continue;
-
-                        const set = document.querySelectorAll(`[data-${o.key}=${o.set}]`);
-                        let v;
-                        let orderType;
-                        for(const sequence of set) {
-                            if(sequence.value.length <= 0) continue;
-
-                            if(!orderType) orderType = (Validator.isDate(value, format)) ? "date" : "number";
-                            if(orderType !== type) throw new Error("Sequential inputs must be of the same type!");
-
-                            if(type === "number") {
-                                if(Number(sequence.value) < v) {
-                                    result.message = messages.order[0];
-                                    invalidInputsCount++;
-                                    callback(sequence, result);
-                                    return callback(input, result);
-                                } else {
-                                    result.valid   = true;
-                                    result.message = messages.order[1];
-                                    callback(sequence, result);
-                                }
-
-                                v = Number(sequence.value);
-                            } else {
-                                v = (v === undefined ||  v === null) ? sequence.value : v;
-
-                                if(!Validator.isDateAtLeast(sequence.value, v, format)) {
-                                    result.message = messages.order[0];
-                                    invalidInputsCount++;
-                                    callback(sequence, result);
-                                    return callback(input, result);
-                                } else {
-                                    result.valid   = true;
-                                    result.message = messages.order[1];
-                                    callback(sequence, result);
-                                }
-
-                                v = sequence.value;
-                            }
-                            
-                            result.valid   = false;
-                            result.message = messages.order[1];
-                        }
-
-                        validated.add(o.key);
-                    }
-                }
-
-                result.valid = true;
-                return callback(input, result);
             }
+
+
+            if(rule === 'tel'  && typeof format !== 'string') format = 'SSSSSSSSSS';
+            if(rule === 'date' && typeof format !== 'string') format = 'DD/MM/YYYY';
+            required = input.hasAttribute('data-vld-required');
+            minlength = !Validator.isNumber(minlength, false) ? -1 : Number(minlength);
+            maxlength = !Validator.isNumber(maxlength, false) ? Infinity : Number(maxlength);
+            if(minlength >= maxlength) 
+                throw new Error('Minlength attribute value must not exceed Maxlength attribute value.');
+            min = !Validator.isNumber(min, true) ? -Infinity : Number(min);
+            max = !Validator.isNumber(max, true) ? Infinity  : Number(max);
+            step = Number(step);
+            if(min >= max) 
+                throw new Error('Min attribute value must not exceed Max attribute value.');
+            if(pattern && input.dataset.hasOwnProperty('vldErrmessage')) messages[rule][0] = input.dataset.vldErrmessage;
+            if(pattern && input.dataset.hasOwnProperty('vldMessage')) messages[rule][1] = input.dataset.vldMessage;
+
+            if     (rule ===    'alpha') isValid = Validator.isAlpha(value);
+            else if(rule === 'alphanum') isValid = Validator.isAlphanum(value);
+            else if(rule === 'specials') isValid = Validator.isSpecials(value);
+            else if(rule ===   'number') isValid = Validator.isNumber(value, true);
+            else if(rule ===    'email') isValid = Validator.isEmail(value);
+            else if(rule === 'password') isValid = Validator.isPassword(value);
+            else if(rule ===      'tel') isValid = Validator.isTel(value, format);
+            else if(rule ===      'url') isValid = Validator.isURL(value);
+            else if(rule ===     'date') isValid = Validator.isDate(value, format); 
+            else if(rule ===  'pattern') isValid = new RegExp(pattern).test(value);
+
+            if(isValid) { 
+                if(required                            && isValid) { rule = 'required';  isValid = !Validator.isEmpty(value);                         }
+                if(minlength  >  -1                    && isValid) { rule = 'minlength'; isValid = Validator.isAtLeast(value.length, minlength);      }
+                if(maxlength !==  Infinity             && isValid) { rule = 'maxlength'; isValid = Validator.isAtMost(value.length, maxlength);       }
+                if(min       !== -Infinity             && isValid) { rule = 'min';       isValid = Validator.isAtLeast(value, min)                    }
+                if(max       !==  Infinity             && isValid) { rule = 'max';       isValid = Validator.isAtMost(value, max);                    }
+                if(Validator.isNumber(step, true)      && isValid) { rule = 'step';      isValid = Validator.isMultipleOf (value, step);              }
+                if(Validator.isDate(startDate, format) && isValid) { rule = 'startdate'; isValid = Validator.isDateAtLeast(value, startDate, format); }
+                if(Validator.isDate(endDate  , format) && isValid) { rule = 'enddate';   isValid = Validator.isDateAtMost (value, endDate, format);   }
+            }
+
+
+            if(bindingsMap.has(input)) {
+                let {operation, targets} = bindingsMap.get(input);
+
+                if(operation === 'equal') {
+                    for(let target of targets) {
+                        if(input.value === target.value) continue;
+                        rule    = operation;
+                        isValid = false;
+                    }
+                }
+                else if (operation === 'different') {
+                    for(let target of targets) {
+                        if(input.value !== target.value) continue;
+                        rule    = operation;
+                        isValid = false;
+                    }
+                }
+                else if (operation === 'greater') {
+                    for(let target of targets) {
+                        if(Number(input.value) > Number(target.value)) continue;
+                        rule    = operation;
+                        isValid = false;
+                    }
+                }
+                else if (operation === 'lesser') {
+                    for(let target of targets) {
+                        if(Number(input.value) < Number(target.value)) continue;
+                        rule    = operation;
+                        isValid = false;
+                    }
+                }
+                else if (operation === 'sum') {
+                    let accumilation = Number(input.value);
+                    for(let target of targets) { 
+                        if(!Validator.isNumber(target.value, true)) {
+                            rule    = operation;
+                            isValid = false;
+                            break;
+                        }
+                        accumilation += Number(target.value); 
+                    }
+                    input.value = accumilation;
+                }        
+            }
+
+
+            return {
+                input   : input,
+                isValid : isValid, 
+                rule    : rule, 
+                message : messages[rule][+isValid]
+            };
         },
 
-        messages: {
-            required: [
-                "Requis!",
-                "Champ obligatoire complété."
-            ],
-            alpha: [
-                "Entrée invalide!",
-                "Entrée valide."
-            ],
-            alphanum: [
-                "Entrée invalide!",
-                "Entrée valide."
-            ],
-            specialchar: [
-                "Entrée invalide!",
-                "Entrée valide."
-            ],
-            password: [
-                "Mot de passe invalide!",
-                "Mot de passe valide."
-            ],
-            email: [
-                "E-mail invalide!",
-                "E-mail valide."
-            ],
-            number: [
-                "Numéro invalide!",
-                "Numéro valide."
-            ],
-            tel: [
-                "Numéro de téléphone invalide!",
-                "Numéro de téléphone valide."
-            ],
-            url: [
-                "URL invalide!",
-                "URL valide."
-            ],
-            date: [
-                "Date invalide!",
-                "Date valide."
-            ],
-            color: [
-                "Couleur invalide!",
-                "Couleur valide."
-            ],
-            min: [
-                "Valeur inférieure au minimum!",
-                "La valeur est dans la plage autorisée."
-            ],
-            max: [
-                "Valeur maximale dépassée!",
-                "La valeur est dans la plage autorisée."
-            ],
-            minlength: [
-                "Trop court!",
-                "Longueur minimale atteinte."
-            ],
-            maxlength: [
-                "Trop long!",
-                "Dans la longueur maximale."
-            ],
-            pattern: [
-                "Format non correct!",
-                "Format valide."
-            ],
-            sum: [
-                "Somme invalide!",
-                "Somme valide."
-            ],
-            unique: [
-                "L'entrée doit être unique!",
-                "L'entrée est unique."
-            ],
-            order: [
-                "Les entrées ne sont pas dans l'ordre!",
-                "Les entrées sont en ordre."
-            ]
-        }
-    };
-})();
+        validate: function(container, messages = ValidatorMessages, callback) {
+            container.oninput = (event) => { 
+                let result = validateInput(event.target, messages);
+                result.errorCount = 1;
+                if(!result) return;
+                let input = result.input; delete result.input;
+                callback(input, result);
+            }
 
-if(typeof module !== "undefined" && module.exports)  module.exports = Validator;     
+            container.onchange = (event) => { 
+                let result = validateInput(event.target, messages);
+                result.errorCount = 1;
+                if(!result) return;
+                let input = result.input; delete result.input; 
+                callback(input, result);
+            }
+
+            if(!container.matches('form')) return;
+            let inputs = container.querySelectorAll(`input[data-vld-type], select[data-vld-type], textarea[data-vld-type]`);
+            container.onsubmit = (event) => {
+                let canSubmit = true;
+                let errorCount = 0;
+
+                for(let input of inputs) { 
+                    if(input.value.length === 0 && !input.matches('[data-vld-required]')) continue;
+                    let result = validateInput(input, messages);
+                    result.errorCount = ++errorCount;
+
+                    if(!result) continue;
+                    let target = result.input; delete result.input;
+                    if(!result.isValid) canSubmit = false;
+                    callback(target, result);
+                }
+
+                if(!canSubmit) { 
+                    event.preventDefault(); 
+                }
+            }
+        }
+    }
+})();
