@@ -397,17 +397,18 @@ const Validator = (() => {
                 throw new Error('Unknown type attribute value was given.');
 
 
-            if(!bindingsMap.has(input)) {
+            if(!bindingsMap.has(input) && !input.hasAttribute('data-vld-unbound')) {
+                input.setAttribute('data-vld-unbound', '');
                 const bindAttrRegex = /vldBindto(\d+)/;
                 for(let propName of Object.keys(input.dataset)) {
-                    const index        = propName.match(bindAttrRegex)[1];
                     const hasBind      = bindAttrRegex.test(propName);
                     const hasOperation = input.dataset.hasOwnProperty('vldOperation' + index);
 
                     if(!hasBind     && !hasOperation) continue;
                     if(hasBind      && !hasOperation) throw new Error(``);
                     if(hasOperation && !hasBind)      throw new Error(``);
-
+                    
+                    const index   = propName.match(bindAttrRegex)[1];
                     let operation = input.dataset['vldOperation' + index].trim().toLowerCase();
                     let targets   = input.dataset['vldBindto' + index].replace(/\s+/g, '').split(',').map(id => document.querySelector(id));
                     bindingsMap.set(input, {operation, targets});
