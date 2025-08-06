@@ -398,7 +398,7 @@ const Validator = (() => {
 
 
             if(!bindingsMap.has(input)) {
-                const bindAttrRegex = /vldBind(\d+)/;
+                const bindAttrRegex = /vldBindto(\d+)/;
                 for(let propName of Object.keys(input.dataset)) {
                     const index        = propName.match(bindAttrRegex)[1];
                     const hasBind      = bindAttrRegex.test(propName);
@@ -409,7 +409,7 @@ const Validator = (() => {
                     if(hasOperation && !hasBind)      throw new Error(``);
 
                     let operation = input.dataset['vldOperation' + index].trim().toLowerCase();
-                    let targets   = input.dataset['vldBind' + index].replace(/\s+/g, '').split(',').map(id => document.querySelector(id));
+                    let targets   = input.dataset['vldBindto' + index].replace(/\s+/g, '').split(',').map(id => document.querySelector(id));
                     bindingsMap.set(input, {operation, targets});
                 }
             }
