@@ -397,21 +397,27 @@ const Validator = (() => {
                 throw new Error('Unknown type attribute value was given.');
 
 
-            if(!bindingsMap.has(input) && !input.hasAttribute('data-vld-unbound')) {
-                input.setAttribute('data-vld-unbound', '');
-                const bindAttrRegex = /vldBindto(\d+)/;
-                for(let propName of Object.keys(input.dataset)) {
-                    const hasBind      = bindAttrRegex.test(propName);
-                    const hasOperation = input.dataset.hasOwnProperty('vldOperation' + index);
+            if(!bindingsMap.has(input) && !input.hasAttribute('data-vld-bindless')) {
+                if([...input.attributes].some(attr => attr.name.startsWith('data-vld-bind'))) {
+                    for(let propName of Object.keys(input.dataset)) {
+                        if(!propName.startsWith('vldBind')) continue;
+                        const match = propName.match( /vldBind(\d+)to/)[1];
+                        if(!match) continue;
+                        const index = match[1];
 
-                    if(!hasBind     && !hasOperation) continue;
-                    if(hasBind      && !hasOperation) throw new Error(``);
-                    if(hasOperation && !hasBind)      throw new Error(``);
-                    
-                    const index   = propName.match(bindAttrRegex)[1];
-                    let operation = input.dataset['vldOperation' + index].trim().toLowerCase();
-                    let targets   = input.dataset['vldBindto' + index].replace(/\s+/g, '').split(',').map(id => document.querySelector(id));
-                    bindingsMap.set(input, {operation, targets});
+                        if(!input.dataset.hasOwnProperty('vldOperation' + index)) 
+                            throw new Error(`Bind data attribute cannot be used without operation data attribute.`);
+                        
+                        let operation = input.dataset['vldOperation' + index].trim().toLowerCase();
+                        let targets   = input.dataset[`vldBind${index}to`].replace(/\s+/g, '').split(',').map(id => document.querySelector(id));
+                        bindingsMap.set(input, {operation, targets});
+                    }
+                }
+                else if([...input.attributes].some(attr => attr.name.startsWith('data-vld-operation'))) {
+                    throw new Error(`Operation data attribute cannot be used wihout bind data attribute.`);
+                }
+                else {
+                    input.setAttribute('data-vld-bindless', '');
                 }
             }
 
